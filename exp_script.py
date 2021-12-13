@@ -1,14 +1,17 @@
-print("Start simulator (SITL)")
+# print("Start simulator (SITL)")
+# Import DroneKit-Python
 import dronekit_sitl
+# from dronekit_sitl import SITL
+# from dronekit import connect, VehicleMode
+
 sitl = dronekit_sitl.start_default()
+# sitl = SITL.start_default()
 connection_string = sitl.connection_string()
 
-# Import DroneKit-Python
-from dronekit import connect, VehicleMode
 
 # Connect to the Vehicle.
-print("Connecting to vehicle on: %s" % (connection_string,))
-vehicle = connect(connection_string, wait_ready=True)
+# print("Connecting to vehicle on: %s" % (connection_string,))
+# vehicle = connect(connection_string, wait_ready=True)
 
 # Get some vehicle attributes (state)
 print("Get some vehicle attribute values:")

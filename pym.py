@@ -44,55 +44,40 @@ master = mavutil.mavlink_connection('/dev/ttyACM0')
 # Wait for the first heartbeat 
 master.wait_heartbeat()
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
-# IDs
+
 sysID, compID = master.target_system, master.target_component
+SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot = 0.0, 0.0, 0.0, 0.0   # in ms
+roll, pitch, yaw = 0.0, 0.0, 0.0                                                # in rad
+fix, num, lat, lon, alt = 0, 0, 0.0, 0.0, 0.0                                   # in degE7 and mm
+vx, vy, vz, heading = 0.0, 0.0, 0.0, 0.0                                        # in m/s and deg
+MAV_state, battery, failsafe = None, 0, True                                    # string, num in %, bool
+
 while True:
-    # msg = master.recv_match(blocking=True)
-    # print(msg)
-    
-    # system boot time
-    SYS_time = master.recv_match(type="SYSTEM_TIME", blocking=True).time_boot_ms
-    # imu: time, roll, pitch, yaw
-    imu = master.recv_match(type="ATTITUDE", blocking=True)
-    IMU_time_boot, roll, pitch, yaw = imu.time_boot_ms, imu.roll, imu.pitch, imu.yaw
-    # GPS: time_usec/boot, fix, sat_num, lat, lon, alt
-    GPS = master.recv_match(type="GPS_RAW_INT", blocking=True)
-    GPS_time_usec, fix, num, lat, lon, alt = GPS.time_usec, GPS.fix_type, GPS.satellites_visible, GPS.lat, GPS.lon, GPS.alt # in degE7 and mm
-    GPS_ACC = master.recv_match(type="GLOBAL_POSITION_INT", blocking=True) # fused GPS and accelerometers. Shall use this, but it delays quite bad!
-    GPSACC_time_boot, GPSACC_lat, GPSACC_lon, GPSACC_alt = GPS_ACC.time_boot_ms, GPS_ACC.lat, GPS_ACC.lon, GPS_ACC.alt # in degE7 and mm
-    # velocity and heading
-    GPSACC_vx, GPSACC_vy, GPSACC_vz, GPSACC_hdg = GPS_ACC.vx, GPS_ACC.vy, GPS_ACC.vz, GPS_ACC.hdg # in cm/s and cdeg    
-    heading = master.recv_match(type="VFR_HUD", blocking=True).heading # in deg
-    # MAV_STATE
-    MAV_state = system_status(master.recv_match(type="HEARTBEAT", blocking=True).system_status)
-    # Failsafe
-    # failsafe = True
-    # failsafe = master.recv_match(type="HIGH_LATENCY2", blocking=True).HL_FAILURE_FLAG
-    # failsafe = master.recv_match(type="STATUSTEXT", blocking=True).MAV_SEVERITY
+    msg = master.recv_match(blocking=True)
+    if msg.get_type() == "SYSTEM_TIME":             # system boot time
+        SYS_time = msg.time_boot_ms
+    elif msg.get_type() == "ATTITUDE":              # imu: time, roll, pitch, yaw
+        IMU_time_boot, roll, pitch, yaw = msg.time_boot_ms, msg.roll, msg.pitch, msg.yaw
+    elif msg.get_type() == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
+        GPS_time_usec, fix, num = msg.time_usec, msg.fix_type, msg.satellites_visible
+    elif msg.get_type() == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
+        GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat, msg.lon, msg.alt # in degE7 and mm
+        vx, vy, vz, heading = msg.vx/100.0, msg.vy/100.0, msg.vz/100.0, msg.hdg/100.0 # originally in cm/s and cdeg    
+    elif msg.get_type() == "HEARTBEAT":             # MAV_STATE
+        MAV_state = system_status(msg.system_status)
+    elif msg.get_type() == "BATTERY_STATUS":        # Battery status
+        battery = msg.battery_remaining
+    elif msg.get_type() == "HIGH_LATENCY2":
+        if msg.HL_FAILURE_FLAG > 0: # https://mavlink.io/en/messages/common.html#HL_FAILURE_FLAG
+            failsafe = False
+    elif msg.get_type() == "STATUSTEXT":
+        if msg.severity < 4: # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+            failsafe = False
 
-    # if not  and not master.recv_match(type="STATUSTEXT", blocking=True):
-    #     failsafe = True
-    # else:
-    #     failsafe = False
-
-
-
-    # battery = master.recv_match(type="BATTERY_STATUS", blocking=True).battery_remaining
-
-    print(SYS_time)
-    # print('imu, ', IMU_time_boot, roll, pitch, yaw)
-    # print('gps, ', GPS_time_usec, fix, num, lat, lon, alt)
-    # print('heading, ', heading)
-    # print(master.recv_match(type="HIGH_LATENCY2", blocking=True)) #failure_flags == HL_FAILURE_FLAG
-    # print(master.recv_match(type="STATUSTEXT", blocking=True)) #MAV_SEVERITY
-    # print(master.recv_match(type="HEARTBEAT", blocking=True))
-    # print(failsafe)
-
-    # try:
-    #     failsafe = master.recv_match(type="HIGH_LATENCY2", blocking=True).HL_FAILURE_FLAG
-    #     failsafe = master.recv_match(type="STATUSTEXT", blocking=True).MAV_SEVERITY
-    # except:
-    #     pass
-    
-    
-
+    print("\n", msg)
+    print(SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
+    print(roll, pitch, yaw)
+    print(fix, num, lat, lon, alt)
+    print(vx, vy, vz, heading)
+    print(MAV_state, battery, failsafe)
+ 

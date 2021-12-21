@@ -48,7 +48,7 @@ print("Heartbeat from system (system %u component %u)" % (master.target_system, 
 sysID, compID = master.target_system, master.target_component
 SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot = 0.0, 0.0, 0.0, 0.0   # in ms
 roll, pitch, yaw = 0.0, 0.0, 0.0                                                # in rad
-fix, num, lat, lon, alt = 0, 0, 0.0, 0.0, 0.0                                   # in degE7 and mm
+fix, num, lat, lon, alt = 0, 0, 0.0, 0.0, 0.0                                   # in deg and m
 vx, vy, vz, heading = 0.0, 0.0, 0.0, 0.0                                        # in m/s and deg
 MAV_state, battery, failsafe = None, 0, True                                    # string, num in %, bool
 
@@ -61,7 +61,7 @@ while True:
     elif msg.get_type() == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
         GPS_time_usec, fix, num = msg.time_usec, msg.fix_type, msg.satellites_visible
     elif msg.get_type() == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
-        GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat, msg.lon, msg.alt # in degE7 and mm
+        GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat/1e7, msg.lon/1e7, msg.alt/1e3 # originally in degE7 and mm
         vx, vy, vz, heading = msg.vx/100.0, msg.vy/100.0, msg.vz/100.0, msg.hdg/100.0 # originally in cm/s and cdeg    
     elif msg.get_type() == "HEARTBEAT":             # MAV_STATE
         MAV_state = system_status(msg.system_status)
@@ -75,9 +75,9 @@ while True:
             failsafe = False
 
     print("\n", msg)
-    print(SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
-    print(roll, pitch, yaw)
-    print(fix, num, lat, lon, alt)
-    print(vx, vy, vz, heading)
-    print(MAV_state, battery, failsafe)
+    print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
+    print('rpy: ', roll, pitch, yaw)
+    print('gps: ', fix, num, lat, lon, alt)
+    print('v/hdg: ', vx, vy, vz, heading)
+    print('state, bat, fs: ', MAV_state, battery, failsafe)
  

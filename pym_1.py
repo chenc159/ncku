@@ -41,30 +41,55 @@ def system_status(num):
 
 # Start a connection
 master = mavutil.mavlink_connection('/dev/ttyACM0')
+# master.reboot_autopilot()
 # Wait for the first heartbeat 
 master.wait_heartbeat()
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
 
+cs = mavutil.x25crc()
+
+
+# Initialize parameters for drone data
 sysID, compID = master.target_system, master.target_component
-SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot = 0.0, 0.0, 0.0, 0.0   # in ms
-roll, pitch, yaw = 0.0, 0.0, 0.0                                                # in rad
-fix, num, lat, lon, alt = 0, 0, 0.0, 0.0, 0.0                                   # in deg and m
-vx, vy, vz, heading = 0.0, 0.0, 0.0, 0.0                                        # in m/s and deg
-MAV_state, battery, failsafe = None, 0, True                                    # string, num in %, bool
+start_time, start_uptime = master.start_time, master.uptime
+# print(start_time, time.localtime(start_time), start_uptime)
+
+SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot = 0, 0, 0, 0   # in ms
+roll, pitch, yaw = 0, 0, 0                                              # in deg 
+fix, num, lat, lon, alt = 0, 0, 0, 0, 0                                 # in degE7 and mm
+vx, vy, vz, heading = 0, 0, 0, 0                                        # in cm/s and cdeg
+MAV_state, battery, failsafe = 0, 0, 99                                 # int, num in %, bool
+
+msgs =  {   
+    "SYSTEM_TIME":          {"time_boot_ms": 0}, 
+    "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
+    "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
+    "GLOBAL_POSITION_INT":  {"time_boot_ms": 0, "lat": 0, "lon": 0, "alt": 0, "vx": 0, "vy": 0, "vz": 0, "hdg": 0},
+    "HEARTBEAT":            {"system_status": 99},
+    "BATTERY_STATUS":       {"battery_remaining": 0},
+    "HIGH_LATENCY2":        {"HL_FAILURE_FLAG": 99},
+    "STATUSTEXT":           {"severity": 99}
+} #AHRS2, AHRS3
+
 
 while True:
+    # Get data from pixhawk via pymavlink
     msg = master.recv_match(blocking=True)
-    if msg.get_type() == "SYSTEM_TIME":             # system boot time
+
+    if msg == None:
+        continue
+    elif msg.get_type() == "SYSTEM_TIME":             # system boot time
         SYS_time = msg.time_boot_ms
     elif msg.get_type() == "ATTITUDE":              # imu: time, roll, pitch, yaw
-        IMU_time_boot, roll, pitch, yaw = msg.time_boot_ms, msg.roll, msg.pitch, msg.yaw
+        IMU_time_boot, roll, pitch, yaw = msg.time_boot_ms, round(msg.roll*57.2958), round(msg.pitch*57.2958), round(msg.yaw*57.2958) #msg.roll, msg.pitch, msg.yaw
     elif msg.get_type() == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
         GPS_time_usec, fix, num = msg.time_usec, msg.fix_type, msg.satellites_visible
     elif msg.get_type() == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
-        GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat/1e7, msg.lon/1e7, msg.alt/1e3 # originally in degE7 and mm
-        vx, vy, vz, heading = msg.vx/100.0, msg.vy/100.0, msg.vz/100.0, msg.hdg/100.0 # originally in cm/s and cdeg    
+        GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat, msg.lon, msg.alt # originally in degE7 and mm
+        vx, vy, vz, heading = msg.vx, msg.vy, msg.vz, msg.hdg # originally in cm/s and cdeg    
     elif msg.get_type() == "HEARTBEAT":             # MAV_STATE
-        MAV_state = system_status(msg.system_status)
+        # MAV_state = system_status(msg.system_status)
+        MAV_state = msg.system_status
     elif msg.get_type() == "BATTERY_STATUS":        # Battery status
         battery = msg.battery_remaining
     elif msg.get_type() == "HIGH_LATENCY2":
@@ -79,5 +104,11 @@ while True:
     print('rpy: ', roll, pitch, yaw)
     print('gps: ', fix, num, lat, lon, alt)
     print('v/hdg: ', vx, vy, vz, heading)
-    print('state, bat, fs: ', MAV_state, battery, failsafe)
+    # print('state, bat, fs: ', MAV_state, battery, failsafe)
+    # print(master.flightmode)
+    # print(master.sysid_state[1].armed)
+    print(master.start_time, master.uptime)
+    print(time.localtime(master.start_time))
+    # print(master.messages)
+
  

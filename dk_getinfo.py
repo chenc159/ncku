@@ -50,7 +50,7 @@ while True:
     
     print(gps_fix, gps_num)
     print(lat, lon, alt)
-    # print(roll, pitch, yaw)
+    print(roll, pitch, yaw)
 
 
     time.sleep(1)

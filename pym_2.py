@@ -7,6 +7,7 @@ uav system mav status, uav failsafe, lat, long, alt, vx, vy, vz, heading
 
 from pymavlink import mavutil
 import time
+from datetime import datetime
 
 def system_status(num):
     """ 
@@ -45,7 +46,11 @@ master = mavutil.mavlink_connection('/dev/ttyACM0')
 # Wait for the first heartbeat 
 master.wait_heartbeat()
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
-
+# Initialize data stream
+rate = 4 # desired transmission rate
+master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
+# master.param_fetch_all()
+# For checksum calculation
 cs = mavutil.x25crc()
 
 
@@ -54,7 +59,7 @@ sysID, compID = master.target_system, master.target_component
 start_time, start_uptime = master.start_time, master.uptime
 # print(start_time, time.localtime(start_time), start_uptime)
 
-SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot = 0, 0, 0, 0   # in ms
+SYS_time, sysgps_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot = 0, 0, 0, 0, 0   # in ms
 roll, pitch, yaw = 0, 0, 0                                              # in deg 
 fix, num, lat, lon, alt = 0, 0, 0, 0, 0                                 # in degE7 and mm
 vx, vy, vz, heading = 0, 0, 0, 0                                        # in cm/s and cdeg
@@ -79,7 +84,7 @@ while True:
     if msg == None:
         continue
     elif msg.get_type() == "SYSTEM_TIME":             # system boot time
-        SYS_time = msg.time_boot_ms
+        SYS_time, sysgps_time = msg.time_boot_ms, msg.time_unix_usec
     elif msg.get_type() == "ATTITUDE":              # imu: time, roll, pitch, yaw
         IMU_time_boot, roll, pitch, yaw = msg.time_boot_ms, round(msg.roll*57.2958), round(msg.pitch*57.2958), round(msg.yaw*57.2958) #msg.roll, msg.pitch, msg.yaw
     elif msg.get_type() == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
@@ -101,6 +106,7 @@ while True:
 
     print("\n", msg)
     print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
+    print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
     print('rpy: ', roll, pitch, yaw)
     print('gps: ', fix, num, lat, lon, alt)
     print('v/hdg: ', vx, vy, vz, heading)
@@ -109,6 +115,5 @@ while True:
     # print(master.sysid_state[1].armed)
     print(master.start_time, master.uptime)
     print(time.localtime(master.start_time))
-    # print(master.messages)
 
  

@@ -41,7 +41,7 @@ def system_status(num):
 
 
 # Start a connection
-master = mavutil.mavlink_connection('/dev/ttyACM0')
+master = mavutil.mavlink_connection('/dev/ttyTHS1')
 # master.reboot_autopilot()
 # Wait for the first heartbeat 
 master.wait_heartbeat()
@@ -76,7 +76,6 @@ msgs =  {
     "STATUSTEXT":           {"severity": 99}
 } #AHRS2, AHRS3
 
-t = 0
 while True:
     # Get data from pixhawk via pymavlink
     msg = master.recv_match(blocking=True)
@@ -116,17 +115,3 @@ while True:
     # print('armed: ', master.armed)
     # print(master.start_time, master.uptime)
     # print(time.localtime(master.start_time))
-
-    t += 1
-    if (t%1000 == 0):
-        command = input("1 to arm, 2 to disarm")
-        try:
-            if int(command) == 1:
-                master.arducopter_arm()
-                master.motors_armed_wait()
-            elif int(command) == 2:
-                master.arducopter_disarm()
-                master.motors_disarmed_wait()
-        except: pass
-
- 

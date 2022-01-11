@@ -15,36 +15,6 @@ def is_armable(self):
     return self.mode != 'INITIALISING' and (self.gps_0.fix_type is not None and self.gps_0.fix_type > 1) and self._ekf_predposhorizabs
 
 
-# Start a connection
-master = mavutil.mavlink_connection('/dev/ttyACM0')
-# Wait for the first heartbeat 
-master.wait_heartbeat()
-print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
-# Initialize data stream
-rate = 4 # desired transmission rate
-master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
-
-
-while True:
-
-    command = input("0 to skip, 1 to arm, 2 to disarm")
-    if int(command) == 0:
-        pass
-    elif int(command) == 1:
-        master.arducopter_arm()
-        master.motors_armed_wait()
-    elif int(command) == 2:
-        master.arducopter_disarm()
-        master.motors_disarmed_wait()
-    else:
-        master.set_mode(command)
-
-
-# arm/disarm
-# check mode for px4 or acm
-# send waypoints
-# 
-
 mode_mapping_acm = {
     0 : 'STABILIZE',
     1 : 'ACRO',
@@ -71,3 +41,38 @@ mode_mapping_acm = {
     23 : 'FOLLOW',
     24 : 'ZIGZAG',
 }
+
+
+# Start a connection
+master = mavutil.mavlink_connection('/dev/ttyACM0')
+# Wait for the first heartbeat 
+master.wait_heartbeat()
+print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
+# Initialize data stream
+rate = 4 # desired transmission rate
+master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
+
+
+
+
+while True:
+
+    command = input("0 to skip, 1 to arm, 2 to disarm, string to change mode")
+    if int(command) == 0:
+        pass
+    elif int(command) == 1:
+        master.arducopter_arm()
+        master.motors_armed_wait()
+    elif int(command) == 2:
+        master.arducopter_disarm()
+        master.motors_disarmed_wait()
+    else:
+        master.set_mode(command)
+
+
+# arm/disarm
+# check mode for px4 or acm
+# send waypoints
+# 
+
+

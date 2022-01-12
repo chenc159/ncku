@@ -38,12 +38,12 @@ msgs =  {
     "STATUSTEXT":           {"severity": 99}
 } #AHRS2, AHRS3
 
-msgs_c, msgs_p = {}, {}
-for key1 in msgs.keys():
-    msgs_c[key1], msgs_p[key1] = {}, {}
-    for key2 in msgs[key1].keys():
-        msgs_c[key1][key2] = c_int(msgs_c[key1][key2])
-        msgs_p[key1][key2] = pointer(msgs_c[key1][key2])
+# msgs_c, msgs_p = {}, {}
+# for key1 in msgs.keys():
+#     msgs_c[key1], msgs_p[key1] = {}, {}
+#     for key2 in msgs[key1].keys():
+#         msgs_c[key1][key2] = c_int(msgs_c[key1][key2])
+#         msgs_p[key1][key2] = pointer(msgs_c[key1][key2])
 
 # Used to convert unit (e.g. 1 rad to 57.2958 deg) and byte format
 convert = {"ATTITUDE.roll": 57.2958, "ATTITUDE.pitch": 57.2958, "ATTITUDE.yaw": 57.2958} # need to include failsafe later
@@ -62,10 +62,10 @@ pkt_len, pkt_val, res = {}, {}, {}
 for i in send_pkt_num:
     pkt_len[i] = len(pkt_item[i])
     res[i] = [0 for j in range(pkt_len[i])]
-    pkt_val[i] = [header]
-    for j in range(1, pkt_len[i]):
-        items = pkt_item[i][j].split('.')
-        pkt_val[i].extend(msgs_c[items[0]][items[1]])
+    # pkt_val[i] = [header]
+    # for j in range(1, pkt_len[i]):
+    #     items = pkt_item[i][j].split('.')
+    #     pkt_val[i].extend(msgs_c[items[0]][items[1]])
 
 
 def init_pkt_bytearray(pkt_num):
@@ -93,7 +93,8 @@ while xbee001.is_open():
     # Store messages
     for item in msgs[msg_type].keys():
         name = msg_type + '.' + item        
-        msgs_p[msg_type][item][0] = round(getattr(msg, item)*convert.get(name, 1))
+        # msgs_p[msg_type][item][0] = round(getattr(msg, item)*convert.get(name, 1))
+        msgs[msg_type][item][0] = round(getattr(msg, item)*convert.get(name, 1))
         # store values to corresponding packets
         for i in send_pkt_num:
             if name in pkt_item[i]:
@@ -110,15 +111,15 @@ while xbee001.is_open():
     try:
         received = xbee001.read_data()
         data = received.data
-        do = msgID.index(data[4]) + 1
-        for i, space in enumerate(pkt_space[do][:]):
-            res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
-        print('out: ', res[do])
+        # do = msgID.index(data[4]) + 1
+        # for i, space in enumerate(pkt_space[do][:]):
+        #     res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
+        # print('out: ', res[do])
         if data[4] == 10:
-            if res[do][0] == 1:
+            if data[5] == 1:
                 master.arducopter_arm()
                 master.motors_armed_wait() 
-            elif res[do][0] == 2:
+            elif data[5] == 2:
                 master.arducopter_disarm()
                 master.motors_disarmed_wait() 
     except:

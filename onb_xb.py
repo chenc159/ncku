@@ -94,7 +94,7 @@ while xbee001.is_open():
     for item in msgs[msg_type].keys():
         name = msg_type + '.' + item        
         # msgs_p[msg_type][item][0] = round(getattr(msg, item)*convert.get(name, 1))
-        msgs[msg_type][item][0] = round(getattr(msg, item)*convert.get(name, 1))
+        msgs[msg_type][item] = round(getattr(msg, item)*convert.get(name, 1))
         # store values to corresponding packets
         for i in send_pkt_num:
             if name in pkt_item[i]:

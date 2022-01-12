@@ -41,7 +41,7 @@ def system_status(num):
 
 
 # Start a connection
-master = mavutil.mavlink_connection('/dev/ttyTHS1')
+master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
 # master.reboot_autopilot()
 # Wait for the first heartbeat 
 master.wait_heartbeat()

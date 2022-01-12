@@ -5,7 +5,7 @@ from digi.xbee.devices import DigiMeshDevice
 from ctypes import *
 
 # Connect pixhawk
-master = mavutil.mavlink_connection('/dev/ttyTHS1')
+master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
 master.wait_heartbeat() # Wait for the first heartbeat 
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
 # Initialize data stream
@@ -20,7 +20,7 @@ xbee001.open(force_settings=True)
 chks = mavutil.x25crc()
 
 # Initialize parameters for drone data
-send_pkt_num = [2,3]
+send_pkt_num = [1, 2, 3]
 sysID, compID = master.target_system, master.target_component
 start_time, start_uptime = master.start_time, master.uptime
 header, checksum  = 255, 256
@@ -57,7 +57,7 @@ pkt_item = {
         "GLOBAL_POSITION_INT.lat", "GLOBAL_POSITION_INT.lon", "GLOBAL_POSITION_INT.alt", "GLOBAL_POSITION_INT.vx", "GLOBAL_POSITION_INT.vy", "GLOBAL_POSITION_INT.vz", "GLOBAL_POSITION_INT.hdg","checksum"],
     3: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "ATTITUDE.time_boot_ms", "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "checksum"]
 }
-pkt_space = {1: [1,1,1,1,1,4,4,1,2], 2: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2], 3: [1,1,1,1,1,4,4,4,4,2], 4:[1]}
+pkt_space = {1: [1,1,1,1,1,4,4,1,2], 2: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2], 3: [1,1,1,1,1,4,4,4,4,2], 4:[1,1,1,1,1,1]}
 pkt_len, pkt_val, res = {}, {}, {}
 for i in send_pkt_num:
     pkt_len[i] = len(pkt_item[i])
@@ -114,7 +114,7 @@ while xbee001.is_open():
         for i, space in enumerate(pkt_space[do][:]):
             res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
         print('out: ', res[do])
-        if do == 4:
+        if data[4] == 10:
             if res[do][0] == 1:
                 master.arducopter_arm()
                 master.motors_armed_wait() 

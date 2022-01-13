@@ -30,8 +30,8 @@ start_time, start_uptime = master.start_time, master.uptime
 header, checksum  = 255, 256
 msgID = [128,129,130]
 msgs =  {
-    # "ID":                   {"sys": 0, "comp": 1, "comm": 22, "msg": [128,129]},   
-    "ID":                   {"sys": master.target_system, "comp": master.target_component, "comm": 22, "msg": msgID},   
+    "ID":                   {"sys": 0, "comp": 1, "comm": 22, "msg": [128,129]},   
+    # "ID":                   {"sys": master.target_system, "comp": master.target_component, "comm": 22, "msg": msgID},   
     "SYSTEM_TIME":          {"time_unix_usec": 0, "time_boot_ms": 0}, 
     "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
     "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
@@ -109,7 +109,7 @@ while xbee001.is_open():
     for k in send_pkt_num:
         chks.accumulate(pkt_to_send[k][:-2]) #exclude checksum
         pkt_to_send[k][-2:] = pack(byte_num[2], chks.crc)
-        # xbee001.send_data_broadcast(pkt_to_send[k])
+        xbee001.send_data_broadcast(pkt_to_send[k])
 
     print('\n', msg)
     print(msgs)

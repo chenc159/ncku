@@ -83,7 +83,7 @@ pkt_to_send = {}
 for i in send_pkt_num:
     pkt_to_send[i] = init_pkt_bytearray(i)
 
-
+t = 0
 while xbee001.is_open():
     # Get data from pixhawk via pymavlink
     msg = master.recv_match(blocking=True)
@@ -102,10 +102,13 @@ while xbee001.is_open():
                 pkt_to_send[i][sum(pkt_space[i][:ind]):sum(pkt_space[i][:ind+1])] = pack(byte_num[pkt_space[i][ind]], msgs[msg_type][item]) 
         
     # Before sending the packet out, update checksum
-    for k in send_pkt_num:
-        chks.accumulate(pkt_to_send[k][:-2]) #exclude checksum
-        pkt_to_send[k][-2:] = pack(byte_num[2], chks.crc)
-        xbee001.send_data_broadcast(pkt_to_send[k])
+    t += 1
+    if (t%1000==0):
+        for k in send_pkt_num:
+            chks.accumulate(pkt_to_send[k][:-2]) #exclude checksum
+            pkt_to_send[k][-2:] = pack(byte_num[2], chks.crc)
+            xbee001.send_data_broadcast(pkt_to_send[k])
+            print(k, pkt_to_send[k])
 
     
     try:
@@ -116,6 +119,7 @@ while xbee001.is_open():
         #     res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
         # print('out: ', res[do])
         if data[4] == 10:
+            print(data, data[5])
             if data[5] == 1:
                 master.arducopter_arm()
                 master.motors_armed_wait() 

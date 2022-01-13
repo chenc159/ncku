@@ -88,6 +88,7 @@ while xbee001.is_open():
     # Get data from pixhawk via pymavlink
     msg = master.recv_match(blocking=True)
     msg_type = msg.get_type()
+    print(msg_type)
     if msg_type not in msgs.keys():
         continue
     # Store messages

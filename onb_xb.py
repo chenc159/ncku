@@ -88,7 +88,7 @@ while xbee001.is_open():
     # Get data from pixhawk via pymavlink
     msg = master.recv_match(blocking=True)
     msg_type = msg.get_type()
-    print(msg_type)
+    # print(msg_type)
     if msg_type not in msgs.keys():
         continue
     # Store messages
@@ -103,13 +103,13 @@ while xbee001.is_open():
                 pkt_to_send[i][sum(pkt_space[i][:ind]):sum(pkt_space[i][:ind+1])] = pack(byte_num[pkt_space[i][ind]], msgs[msg_type][item]) 
         
     # Before sending the packet out, update checksum
-    t += 1
-    if (t%1000==0):
-        for k in send_pkt_num:
-            chks.accumulate(pkt_to_send[k][:-2]) #exclude checksum
-            pkt_to_send[k][-2:] = pack(byte_num[2], chks.crc)
-            xbee001.send_data_broadcast(pkt_to_send[k])
-            print(k, pkt_to_send[k])
+    # t += 1
+    # if (t%1000==0):
+    for k in send_pkt_num:
+        chks.accumulate(pkt_to_send[k][:-2]) #exclude checksum
+        pkt_to_send[k][-2:] = pack(byte_num[2], chks.crc)
+        xbee001.send_data_broadcast(pkt_to_send[k])
+        print(k, pkt_to_send[k])
 
     
     try:

@@ -8,7 +8,7 @@ class info:
     msgID = {1:128, 2:129, 3:130}
     # required message (type and field name)
     msgs =  {
-        "ID":                   {"sys": 0, "comp": 1, "comm": 22},   
+        "ID":                   {"sys": 0, "comp": 1, "comm": 22, "time": 0},   
         # "ID":                   {"sys": master.target_system, "comp": master.target_component, "comm": 22, "msg": msgID},   
         "SYSTEM_TIME":          {"time_unix_usec": 0, "time_boot_ms": 0}, 
         "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
@@ -34,13 +34,13 @@ class info:
 
     # Initialize packet
     pkt_item = {
-        1: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "GLOBAL_POSITION_INT.time_boot_ms", "SYSTEM_TIME.time_boot_ms", 
+        1: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "ID.time", "SYSTEM_TIME.time_unix_usec", 
             "HEARTBEAT.system_status", "checksum"],
-        2: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "GLOBAL_POSITION_INT.time_boot_ms", "SYSTEM_TIME.time_boot_ms", 
+        2: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "ID.time", "SYSTEM_TIME.time_unix_usec", 
             "GLOBAL_POSITION_INT.lat", "GLOBAL_POSITION_INT.lon", "GLOBAL_POSITION_INT.alt", "GLOBAL_POSITION_INT.vx", "GLOBAL_POSITION_INT.vy", "GLOBAL_POSITION_INT.vz", "GLOBAL_POSITION_INT.hdg","checksum"],
-        3: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "ATTITUDE.time_boot_ms", "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "checksum"]
+        3: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "ID.time", "ATTITUDE.time_boot_ms", "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "checksum"]
     }
-    pkt_space = {1: [1,1,1,1,1,4,4,1,2], 2: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2], 3: [1,1,1,1,1,4,4,4,4,2]}
+    pkt_space = {1: [1,1,1,1,1,4,4,1,2], 2: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2], 3: [1,1,1,1,1,4,4,4,4,4,2]}
     # pkt_len, pkt_val, res = {}, {}, {}
     # for i in send_pkt_num:
     #     pkt_len[i] = len(pkt_item[i])

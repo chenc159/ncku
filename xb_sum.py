@@ -1,9 +1,13 @@
-import time
+# import time
+import sched, time
+from datetime import datetime
 from struct import *
 from pymavlink import mavutil
 from digi.xbee.devices import DigiMeshDevice
 from ctypes import *
 from info import info
+
+s = sched.scheduler(time.time, time.sleep)
 
 # Connect pixhawk
 master = mavutil.mavlink_connection('/dev/ttyACM0')
@@ -26,20 +30,6 @@ chks = mavutil.x25crc()
 
 # Initialize parameters for drone data
 send_pkt_num = info.send_pkt_num
-# header, checksum  = 255, 256
-# msgID = [128,129,130]
-# msgs =  {
-#     "ID":                   {"sys": 0, "comp": 1, "comm": 22, "msg": msgID},   
-#     # "ID":                   {"sys": master.target_system, "comp": master.target_component, "comm": 22, "msg": msgID},   
-#     "SYSTEM_TIME":          {"time_unix_usec": 0, "time_boot_ms": 0}, 
-#     "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
-#     "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
-#     "GLOBAL_POSITION_INT":  {"time_boot_ms": 0, "lat": 0, "lon": 0, "alt": 0, "vx": 0, "vy": 0, "vz": 0, "hdg": 0},
-#     "HEARTBEAT":            {"system_status": 99},
-#     "BATTERY_STATUS":       {"battery_remaining": 0},
-#     "HIGH_LATENCY2":        {"HL_FAILURE_FLAG": 99},
-#     "STATUSTEXT":           {"severity": 99}
-# } #AHRS2, AHRS3
 convert, byte_num = info.convert, info.byte_num
 msgs = info.msgs
 msgs["ID"]["sys"], msgs["ID"]["comp"] = master.target_system, master.target_component
@@ -48,42 +38,60 @@ msgs_c, msgs_p = {}, {}
 for key1 in msgs.keys():
     msgs_c[key1], msgs_p[key1] = {}, {}
     for key2 in msgs[key1].keys():
-        # print(msgs[key1][key2])
         msgs_c[key1][key2] = c_int(msgs[key1][key2])
         msgs_p[key1][key2] = pointer(msgs_c[key1][key2])
 
 
 # Initialize packet
-pkt_item, pkt_space, pkt_val = info.pkt_item, info.pkt_space, {}
+pkt_item, pkt_space, pkt_val, pkt_bytearray = info.pkt_item, info.pkt_space, {}, {}
 for i in send_pkt_num:
     pkt_val[i] = [c_int(0) for k in range(len(pkt_item[i]))]
     pkt_val[i][0], pkt_val[i][4] = c_int(info.header), c_int(info.msgID[i])
+    pkt_bytearray[i] = bytearray([pkt_val[i][0].value])
     for j in range(1, len(pkt_item[i])-1):
         items = pkt_item[i][j].split('.')
         if pkt_val[i][j].value == 0:
             pkt_val[i][j] = msgs_c[items[0]][items[1]]
-
-        # if items[0] == "ID" and items[1] == "mes":
-        #     pkt_val[i][j] = info.msgID[i]
-        # else:
-        #     pkt_val[i][j] = msgs_c[items[0]][items[1]]
-
-
-def init_pkt_bytearray(pkt_num):
+        pkt_bytearray[i].extend(pack(byte_num[pkt_space[i][j]], pkt_val[i][j].value))
+    pkt_bytearray[i].extend(pack(byte_num[2], info.checksum))
+    
+def init_pkt_bytearray(pkt_no):
+    init_pkt = bytearray(sum(pkt_space[pkt_no]))
     # Fist five items: header and ids
-    init_pkt = bytearray([info.header, msgs["ID"]["comm"], msgs["ID"]["sys"], msgs["ID"]["comp"], msgs["ID"]["msg"][pkt_num-1]])
-    # Rest of info
-    for i, space in enumerate(pkt_space[pkt_num][5:-1]):
-        items = pkt_item[pkt_num][i+5].split('.')
-        init_pkt.extend(pack(byte_num[space], msgs[items[0]][items[1]]))
-    # Last item: checksum
-    init_pkt.extend(pack(byte_num[2], info.checksum))
-    return init_pkt
+    # init_pkt = bytearray([info.header, msgs["ID"]["comm"], msgs["ID"]["sys"], msgs["ID"]["comp"], msgs["ID"]["msg"][pkt_num-1]])
+    # # Rest of info
+    # for i, space in enumerate(pkt_space[pkt_num][5:-1]):
+    #     items = pkt_item[pkt_num][i+5].split('.')
+    #     init_pkt.extend(pack(byte_num[space], msgs[items[0]][items[1]]))
+    # # Last item: checksum
+    # init_pkt.extend(pack(byte_num[2], info.checksum))
+    # return init_pkt
 
 # pkt_to_send = {}
 # for i in send_pkt_num:
 #     pkt_to_send[i] = init_pkt_bytearray(i)
 
+def send_pkt():
+    for i in send_pkt_num:
+        utctime = datetime.utcnow()
+        msgs_p["ID"]["time"][0] = int((utctime.minute*60 + utctime.second)*1e6 + utctime.microsecond)
+        for j in range(5,len(pkt_item[i])):
+            pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])] = pack(byte_num[pkt_space[i][j]], pkt_val[i][j].value)
+        # exclude checksum
+        chks.accumulate(pkt_bytearray[i][:-2]) 
+        pkt_bytearray[i][-2:] = pack(byte_num[2], chks.crc)
+        # xbee001.send_data_broadcast(pkt_bytearray[i])
+
+def read_pkt():
+    res = {}
+    for i in send_pkt_num:
+        res[i] = [0 for j in range(len(pkt_item[i]))]
+        for j, space in enumerate(pkt_space[i][:]):
+            res[i][j] = unpack(byte_num[space],pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])])[0]
+        print('out: ', res[i])
+
+
+last_time = 0
 while True:
     msg = master.recv_match(blocking=True)
     msg_type = msg.get_type()
@@ -94,9 +102,21 @@ while True:
         name = msg_type + '.' + item        
         msgs_p[msg_type][item][0] = round(getattr(msg, item)*convert.get(name, 1))
     
-    print("\n", msg)
-    print(pkt_item)
+    # print("\n", msg)
+    # print(pkt_item)
     print(pkt_val)
+    # print("\n!!!!!!!!!!!!!")
+    # send_pkt()
+    # read_pkt()
+    # print(time.time())
+
+    if time.time() - last_time >= 1.0:
+        print("\n!!!!!!!!!!!!!")
+        send_pkt()
+        read_pkt()
+        last_time = time.time()
+        
+
 
 '''
 

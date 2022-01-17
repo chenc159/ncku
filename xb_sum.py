@@ -43,9 +43,10 @@ for key1 in msgs.keys():
 
 
 # Initialize packet
-pkt_item, pkt_space, pkt_val, pkt_bytearray = info.pkt_item, info.pkt_space, {}, {}
+pkt_item, pkt_space, pkt_val, pkt_bytearray, res = info.pkt_item, info.pkt_space, {}, {}, {}
 for i in send_pkt_num:
     pkt_val[i] = [c_int(0) for k in range(len(pkt_item[i]))]
+    res[i] = [0 for k in range(len(pkt_item[i]))]
     pkt_val[i][0], pkt_val[i][4] = c_int(info.header), c_int(info.msgID[i])
     pkt_bytearray[i] = bytearray([pkt_val[i][0].value])
     for j in range(1, len(pkt_item[i])-1):
@@ -80,15 +81,22 @@ def send_pkt():
         # exclude checksum
         chks.accumulate(pkt_bytearray[i][:-2]) 
         pkt_bytearray[i][-2:] = pack(byte_num[2], chks.crc)
-        # xbee001.send_data_broadcast(pkt_bytearray[i])
+        try: xbee001.send_data_broadcast(pkt_bytearray[i])
+        except: pass
 
 def read_pkt():
-    res = {}
-    for i in send_pkt_num:
-        res[i] = [0 for j in range(len(pkt_item[i]))]
-        for j, space in enumerate(pkt_space[i][:]):
-            res[i][j] = unpack(byte_num[space],pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])])[0]
-        print('out: ', res[i])
+    try:
+        received = xbee002.read_data()
+        data = received.data
+        do = info.msgID.index(data[4]) + 1
+        for i, space in enumerate(pkt_space[do][:]):
+            res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
+        print('out: ', res[do])
+    except:
+        for i in send_pkt_num:
+            for j, space in enumerate(pkt_space[i][:]):
+                res[i][j] = unpack(byte_num[space],pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])])[0]
+            print('out: ', res[i])
 
 
 last_time = 0

@@ -12,18 +12,9 @@ from dronekit import connect
 # vehicle = connect('/dev/ttyTHS1', wait_ready=True, baud=57600)
 vehicle = connect('/dev/ttyACM0', wait_ready=True, rate=4, baud=57600)
 
-# for item in vehicle.parameters:
-#     print(item)
-# for items in vars(vehicle):
-#     print(items)
-# print(vehicle.master)
-
-
-
 
 while True:
 
-    # Time????
     # IDs (can't get comp.id)
     MAVLink_ID, GCS_ID = vehicle.parameters['SYSID_THISMAV'], vehicle.parameters['SYSID_MYGCS']
     # GPS status: Fix: 0-1: no fix, 2: 2D fix, 3: 3D fix; Number of satellites visible.
@@ -52,14 +43,6 @@ while True:
     print(lat, lon, alt)
     print(roll, pitch, yaw)
 
-
     time.sleep(1)
 
-
-    # vehicle.capabilities.set_attitude_target_local_ned
-
-    
-
-
-
-vehicle.close()
+# vehicle.close()

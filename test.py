@@ -102,12 +102,12 @@ print(res)
 #                 ("sysID", POINTER(c_int))]
 
 
-i = c_int(99)
-j = i
-pi = pointer(i)
+# i = c_int(99)
+# j = i
+# pi = pointer(i)
 
-class packet1():
-    header = i
+# class packet1():
+#     header = i
 
 # # print(j.value)
 # pk1=packet1()

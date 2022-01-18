@@ -42,14 +42,12 @@ def system_status(num):
 
 # Start a connection
 master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
-# master.reboot_autopilot()
 # Wait for the first heartbeat 
 master.wait_heartbeat()
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
 # Initialize data stream
 rate = 4 # desired transmission rate
 master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
-# master.param_fetch_all()
 # For checksum calculation
 cs = mavutil.x25crc()
 
@@ -64,17 +62,6 @@ roll, pitch, yaw = 0, 0, 0                                              # in deg
 fix, num, lat, lon, alt = 0, 0, 0, 0, 0                                 # in degE7 and mm
 vx, vy, vz, heading = 0, 0, 0, 0                                        # in cm/s and cdeg
 MAV_state, battery, failsafe = 0, 0, 99                                 # int, num in %, bool
-
-msgs =  {   
-    "SYSTEM_TIME":          {"time_boot_ms": 0}, 
-    "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
-    "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
-    "GLOBAL_POSITION_INT":  {"time_boot_ms": 0, "lat": 0, "lon": 0, "alt": 0, "vx": 0, "vy": 0, "vz": 0, "hdg": 0},
-    "HEARTBEAT":            {"system_status": 99},
-    "BATTERY_STATUS":       {"battery_remaining": 0},
-    "HIGH_LATENCY2":        {"HL_FAILURE_FLAG": 99},
-    "STATUSTEXT":           {"severity": 99}
-} #AHRS2, AHRS3
 
 while True:
     # Get data from pixhawk via pymavlink

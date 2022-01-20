@@ -38,15 +38,15 @@ for key1 in msgs.keys():
 
 
 # Initialize packets
-# send_pkt_num: list of packet number; item: items in packet; space: space allocation of packet
+# msgID_send: list of packet number; item: items in packet; space: space allocation of packet
 # val: values of packet items; bytearray: bytearray of the packet value (to be sent by xbee); res: unpacked result of the packed packet
 # convert: unit conversion, preferred int; byte_num: get format letter from space allocation for un/pack usage
-send_pkt_num, pkt_item, pkt_space = info.send_pkt_num, info.pkt_item, info.pkt_space
+msgID_send, pkt_item, pkt_space = info.msgID_send, info.pkt_item_old, info.pkt_space
 convert, byte_num = info.convert, info.byte_num
 pkt_val, pkt_bytearray, res = {}, {}, {}
-for i in send_pkt_num:
+for i in msgID_send:
     pkt_val[i] = [c_int(0) for k in range(len(pkt_item[i]))]
-    pkt_val[i][0], pkt_val[i][4] = c_int(info.header), c_int(info.msgID[i])
+    pkt_val[i][0], pkt_val[i][4] = c_int(info.header), c_int(i)
     pkt_bytearray[i] = bytearray([pkt_val[i][0].value])
     res[i] = [0 for k in range(len(pkt_item[i]))]
     for j in range(1, len(pkt_item[i])-1):
@@ -58,7 +58,7 @@ for i in send_pkt_num:
 
 # Pack and send packets
 def send_pkt():
-    for i in send_pkt_num:
+    for i in msgID_send:
         # store computer system time and gps time
         utctime = datetime.utcnow()
         msgs_p["ID"]["time"][0] = int((utctime.minute*60 + utctime.second)*1e6 + utctime.microsecond)
@@ -80,13 +80,13 @@ def read_pkt():
         # first try to read via xbee, if xbee is connected
         received = xbee002.read_data()
         data = received.data
-        do = info.msgID.index(data[4]) + 1
+        do = data[4]
         for i, space in enumerate(pkt_space[do][:]):
             res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
         print('xbee received: ', res[do])
     except:
         # then read it "manually"
-        for i in send_pkt_num:
+        for i in msgID_send:
             for j, space in enumerate(pkt_space[i][:]):
                 res[i][j] = unpack(byte_num[space],pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])])[0]
             print('out: ', i, res[i])

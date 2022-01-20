@@ -7,27 +7,6 @@ import time
 from datetime import datetime
 from info import info
 
-def system_status(num):
-    """ 
-    COPIED FROM DRONEKIT __init__.py FILE
-    System status (:py:class:`SystemStatus`).
-
-    The status has a ``state`` property with one of the following values:
-
-    * ``UNINIT``: Uninitialized system, state is unknown.
-    * ``BOOT``: System is booting up.
-    * ``CALIBRATING``: System is calibrating and not flight-ready.
-    * ``STANDBY``: System is grounded and on standby. It can be launched any time.
-    * ``ACTIVE``: System is active and might be already airborne. Motors are engaged.
-    * ``CRITICAL``: System is in a non-normal flight mode. It can however still navigate.
-    * ``EMERGENCY``: System is in a non-normal flight mode. It lost control over parts
-    or over the whole airframe. It is in mayday and going down.
-    * ``POWEROFF``: System just initialized its power-down sequence, will shut down now.
-    """
-    return {0: 'UNINIT', 1: 'BOOT', 2: 'CALIBRATING', 3: 'STANDBY', 4: 'ACTIVE', 5: 'CRITICAL', 6: 'EMERGENCY', 7: 'POWEROFF', 8: 'TERMINATION'}.get(num)
-
-
-
 
 # Start a connection
 master = mavutil.mavlink_connection('/dev/ttyACM0')
@@ -88,7 +67,7 @@ while True:
         print('rpy: ', roll, pitch, yaw)
         print('gps: ', fix, num, lat, lon, alt)
         print('v/hdg: ', vx, vy, vz, heading)
-        print('state, bat, fs: ', system_status(MAV_state), battery, failsafe)
+        print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
         print('mode: ', master.flightmode)
         print('armed: ', master.sysid_state[master.sysid].armed)
         # print(master.start_time, master.uptime)

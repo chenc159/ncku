@@ -1,7 +1,7 @@
 import time, math
 from datetime import datetime
 from struct import *
-from pymavlink import mavutil
+from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice
 from ctypes import *
 from info import info
@@ -81,10 +81,10 @@ while True:
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.vy')] = msg.vy
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.vz')] = msg.vz
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.hdg')] = msg.hgd
-    elif msg_type == "SCALED_IMU":
-        pkt_val[128][pkt_item[128].index('SCALED_IMU.xacc')] = msg.xacc
-        pkt_val[128][pkt_item[128].index('SCALED_IMU.yacc')] = msg.yacc
-        pkt_val[128][pkt_item[128].index('SCALED_IMU.zacc')] = msg.zacc
+    elif msg_type == "SCALED_IMU2":
+        pkt_val[128][pkt_item[128].index('SCALED_IMU2.xacc')] = msg.xacc
+        pkt_val[128][pkt_item[128].index('SCALED_IMU2.yacc')] = msg.yacc
+        pkt_val[128][pkt_item[128].index('SCALED_IMU2.zacc')] = msg.zacc
 
     elif msg_type == "HEARTBEAT":             # MAV_STATE
         pkt_val[127][pkt_item[127].index('MAVstatus')] = msg.system_status 
@@ -118,22 +118,62 @@ while True:
 
     # Read packet
     try:
-        # first try to read via xbee, if xbee is connected
         received = xbee001.read_data()
         data = received.data
         received_msgID = data[1]
+
         if received_msgID == 131:
-            Desired_dist, Waypt_count = 0,0
+            j = pkt_item[received_msgID].index('Desired_dist')
+            Desired_dist = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            j = pkt_item[received_msgID].index('Waypt_count')
+            Waypt_count = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            Mission_seq, Mission_mode = [k for k in range(len(Waypt_count))], [999 for k in range(len(Waypt_count))]
+            Mission_formation, Mission_pass_radius = [999 for k in range(len(Waypt_count))], [999 for k in range(len(Waypt_count))]
+            Mission_lat, Mission_lon, Mission_alt = [999 for k in range(len(Waypt_count))], [999 for k in range(len(Waypt_count))], [999 for k in range(len(Waypt_count))]
 
+        elif received_msgID == 132:
+            j = pkt_item[received_msgID].index('Waypt_seqID')
+            seq = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            j = pkt_item[received_msgID].index('Mission_mode')
+            num = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            Mission_mode[seq] = info.mission_mode_mapping[num]
+            j = pkt_item[received_msgID].index('Formation')
+            Mission_formation[seq] = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            j = pkt_item[received_msgID].index('Pass_radius')
+            Mission_pass_radius[seq] = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            j = pkt_item[received_msgID].index('lat')
+            Mission_lat[seq] = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            j = pkt_item[received_msgID].index('lon')
+            Mission_lon[seq] = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
+            j = pkt_item[received_msgID].index('alt')
+            Mission_alt[seq] = unpack(byte_num[pkt_space[received_msgID][j]],data[sum(pkt_space[received_msgID][:j]):sum(pkt_space[received_msgID][:j+1])])[0]
 
-        # for i, space in enumerate(pkt_space[do][:]):
-        #     res[do][i] = unpack(byte_num[space],data[sum(pkt_space[do][:i]):sum(pkt_space[do][:i+1])])[0]
-        # print('xbee received: ', res[do])
+            if (999 not in Mission_alt):
+                wp = mavwp.MAVWPLoader()                                                    
+                frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
+                for i in range(Waypt_count):                  
+                    wp.add(mavutil.mavlink.MAVLink_mission_item_message(
+                        sysID, compID,
+                        Mission_seq[i],
+                        frame,
+                        Mission_mode[i],
+                        0, 0, Desired_dist, Mission_pass_radius[i], 0, 0,
+                        Mission_lat[i], Mission_lon[i], Mission_alt[i]))
+                master.waypoint_clear_all_send()                                     
+                master.waypoint_count_send(wp.count())                          
+
+                for i in range(wp.count()):
+                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)             
+                    master.mav.send(wp.wp(msg.seq)) 
+
+        elif received_msgID == 133:
+            if int(data[5]) < 10:
+                master.set_mode(int(data[5]))
+            elif int(data[5]) == 10:
+                master.arducopter_arm()
+            elif int(data[5]) == 11:
+                master.arducopter_disarm()
     except:
-        for i in send_pkt_num:
-            for j, space in enumerate(pkt_space[i][:]):
-                res[i][j] = unpack(byte_num[space],pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])])[0]
-            print('out: ', i, res[i])
         pass
 
 
@@ -151,7 +191,7 @@ while True:
 # 131: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
 #              "Desired_dist", "Waypt_count", "OTHER.systime", "checksum"],
 #         132: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
-#              "Waypt_seqID", "Formation", "Pass_radius", "lat", "lon", "alt","OTHER.systime", "checksum"],
+#              "Waypt_seqID", "Mission_mode", "Formation", "Pass_radius", "lat", "lon", "alt","OTHER.systime", "checksum"],
 #         133: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
 #              "Mode_Arm", "OTHER.systime", "checksum"]
 

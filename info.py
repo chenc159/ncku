@@ -1,4 +1,5 @@
 
+from pymavlink import mavutil
 
 class info:
 
@@ -16,7 +17,7 @@ class info:
                     129: [1,1,1,1,1,1,4,2],
                     130: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2],
                     131: [1,1,1,1,1,4,1,4,2],
-                    132: [1,1,1,1,1,1,1,4,4,4,4,4,2],
+                    132: [1,1,1,1,1,1,1,1,4,4,4,4,4,2],
                     133: [1,1,1,1,1,1,4,2]
                 }
     
@@ -26,7 +27,7 @@ class info:
         "OTHER":                {"sysID": 0, "compID": 1, "commID": 22, "systime": 0},   
         "SYSTEM_TIME":          {"time_unix_usec": 0, "time_boot_ms": 0}, 
         "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
-        "SCALED_IMU":           {"xacc": 0, "yacc": 0, "zacc": 0},
+        "SCALED_IMU2":          {"xacc": 0, "yacc": 0, "zacc": 0},
         "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
         "GLOBAL_POSITION_INT":  {"time_boot_ms": 0, "lat": 0, "lon": 0, "alt": 0, "vx": 0, "vy": 0, "vz": 0, "hdg": 0},
         "HEARTBEAT":            {"system_status": 99},
@@ -47,7 +48,7 @@ class info:
             "Mode", "Arm", "HEARTBEAT.system_status", "Failsafe", "OTHER.systime", "checksum"],
         128: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",  
             "GLOBAL_POSITION_INT.lat", "GLOBAL_POSITION_INT.lon", "GLOBAL_POSITION_INT.alt", "GLOBAL_POSITION_INT.vx", "GLOBAL_POSITION_INT.vy", "GLOBAL_POSITION_INT.vz", "GLOBAL_POSITION_INT.hdg",
-            "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "SCALED_IMU.xacc", "SCALED_IMU.yacc", "SCALED_IMU.zacc", 
+            "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "SCALED_IMU2.xacc", "SCALED_IMU2.yacc", "SCALED_IMU2.zacc", 
             "Dyn_waypt_lat", "Dyn_waypt_lon", "SYSTEM_TIME.time_unix_usec", "OTHER.systime", "checksum"],
         129: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
              "Commandmessage", "OTHER.systime", "checksum"],
@@ -57,7 +58,7 @@ class info:
         131: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
              "Desired_dist", "Waypt_count", "OTHER.systime", "checksum"],
         132: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
-             "Waypt_seqID", "Formation", "Pass_radius", "lat", "lon", "alt","OTHER.systime", "checksum"],
+             "Waypt_seqID", "Mission_mode", "Formation", "Pass_radius", "lat", "lon", "alt","OTHER.systime", "checksum"],
         133: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
              "Mode_Arm", "OTHER.systime", "checksum"]
     }
@@ -86,9 +87,13 @@ class info:
 
 
 
+    # Mappings
 
     mode_mapping_acm = {0 : 'STABILIZE', 1 : 'ACRO', 2 : 'ALT_HOLD', 3 : 'AUTO', 4 : 'GUIDED',
      5 : 'LOITER', 6 : 'RTL', 7 : 'CIRCLE', 8 : 'POSITION', 9 : 'LAND'}
+
+    mission_mode_mapping = {0: mavutil.mavlink.MAV_CMD_DO_SET_HOME, 1: mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+     2:  mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 3: mavutil.mavlink.MAV_CMD_NAV_LOITER_TIME, 4: mavutil.mavlink.MAV_CMD_NAV_LAND, 5: mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH}
 
     def system_status(num):
         """ 

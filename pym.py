@@ -2,7 +2,7 @@
 This file gets the information of the drone by using pymavlink.
 '''
 
-from pymavlink import mavutil
+from pymavlink import mavutil, mavwp
 import time
 from datetime import datetime
 from info import info
@@ -19,7 +19,7 @@ master.mav.request_data_stream_send(master.target_system, master.target_componen
 # For checksum calculation
 cs = mavutil.x25crc()
 
-method = 2 # 1 or 3 to choose the methos to use
+method = 1 # 1 or 3 to choose the methos to use
 ctrl, t = True, 0  # if to send/receive control command from key input
 
 convert = info.convert
@@ -61,6 +61,8 @@ while True:
         elif msg_type == "STATUSTEXT":
             if msg.severity < 4: # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
                 failsafe = False
+        elif msg_type == "MISSION_CURRENT":
+            current_mission_seq = msg.seq
         print("\n", msg)
         print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
@@ -86,15 +88,33 @@ while True:
 
     t += 1
     if ctrl and (t%100 == 0):
-        command = input("0 to 9 to set mode, 10 to arm, 11 to disarm")
+        command = input("0 to 9 to set mode, 10 to arm, 11 to disarm, 12 to do sth with mission: ")
         try:
             if int(command) < 10:
                 master.set_mode(int(command))
             elif int(command) == 10:
                 master.arducopter_arm()
-                master.motors_armed_wait()
+                # master.motors_armed_wait()
             elif int(command) == 11:
                 master.arducopter_disarm()
-                master.motors_disarmed_wait()
+                # master.motors_disarmed_wait()
+            elif int(command) == 12:
+                mission_num = input("Input mission number: ")
+                wp = mavwp.MAVWPLoader()                                                    
+                frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
+                for i in range(int(mission_num)):                  
+                    wp.add(mavutil.mavlink.MAVLink_mission_item_message(
+                        sysID, compID,
+                        i,
+                        frame,
+                        info.mission_mode_mapping[2],
+                        0, 0, 0, 0, 0, 0,
+                        24, 121, 3))
+                master.waypoint_clear_all_send()                                     
+                master.waypoint_count_send(int(mission_num))
+                for i in range(int(mission_num)):
+                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
+                    print(msg)             
+                    master.mav.send(wp.wp(msg.seq)) 
         except: pass
 

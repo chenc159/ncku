@@ -41,7 +41,7 @@ for key1 in msgs.keys():
 # msgID_send: list of packet number; item: items in packet; space: space allocation of packet
 # val: values of packet items; bytearray: bytearray of the packet value (to be sent by xbee); res: unpacked result of the packed packet
 # convert: unit conversion, preferred int; byte_num: get format letter from space allocation for un/pack usage
-msgID_send, pkt_item, pkt_space = info.msgID_send, info.pkt_item_old, info.pkt_space
+msgID_send, pkt_item, pkt_space = info.msgID_send_old, info.pkt_item_old, info.pkt_space_old
 convert, byte_num = info.convert, info.byte_num
 pkt_val, pkt_bytearray, res = {}, {}, {}
 for i in msgID_send:

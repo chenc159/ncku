@@ -61,6 +61,14 @@ class info:
         133: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
              "Mode_Arm", "OTHER.systime", "checksum"]
     }
+    
+    msgID_send_old = [1,2,3]
+    pkt_space_old = {
+        1: [1,1,1,1,1,4,4,1,2],
+        2: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2],
+        3: [1,1,1,1,1,4,4,4,4,4,2]
+    }
+
     pkt_item_old = {
         1: ["header", "ID.comm", "ID.sys", "ID.comp", "ID.mes", "ID.time", "SYSTEM_TIME.time_unix_usec", 
             "HEARTBEAT.system_status", "checksum"],

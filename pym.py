@@ -71,7 +71,7 @@ while True:
         print('v/hdg: ', vx, vy, vz, heading)
         print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
         print('mode: ', master.flightmode)
-        print('armed: ', master.sysid_state[master.sysid].armed)
+        # print('armed: ', master.sysid_state[master.sysid].armed)
         # print(master.start_time, master.uptime)
         # print(time.localtime(master.start_time))
     elif (method == 2): # A more advanced method
@@ -109,12 +109,16 @@ while True:
                         frame,
                         info.mission_mode_mapping[2],
                         0, 0, 0, 0, 0, 0,
-                        24, 121, 3))
+                        24+i*0.1, 121+i*0.1, 3))
                 master.waypoint_clear_all_send()                                     
                 master.waypoint_count_send(int(mission_num))
                 for i in range(int(mission_num)):
                     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
-                    print(msg)             
-                    master.mav.send(wp.wp(msg.seq)) 
+                    print(msg)
+                    master.mav.send(wp.wp(msg.seq))
+                msg = master.recv_match(type=['MISSION_ACK'],blocking=True) 
+                print(msg)
+                # mission_ack = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+                # print("mission result: ", mission_ack) 
         except: pass
 

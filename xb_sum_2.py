@@ -25,13 +25,13 @@ master.mav.request_data_stream_send(master.target_system, master.target_componen
 # Get checksum
 chks = mavutil.x25crc()
 
-
 # Initialize parameters
 sysID, compID, commID = master.target_system, master.target_component, 22
-systime, gpstime = 0, 0
-roll, pitch, yaw, xacc, yacc, zacc = 0,0,0,0,0,0                   # in deg, mG
-lat, lon, alt, vx, vy, vz, hdg = 0,0,0,0,0,0,0              # in degE7, mm, cm/s, cdeg
-last_sent_time = 0 
+# systime, gpstime = 0, 0
+# roll, pitch, yaw, xacc, yacc, zacc = 0,0,0,0,0,0                   # in deg, mG
+# lat, lon, alt, vx, vy, vz, hdg = 0,0,0,0,0,0,0              # in degE7, mm, cm/s, cdeg
+fix, sat_num = 0, 0
+last_sent_time, msgID_to_send = 0, [] 
 
 msgID_send, msgID_receive = info.msgID_send, info.msgID_receive
 # Initialize packets
@@ -53,7 +53,6 @@ pkt_val[127][pkt_item[127].index('Mode')], pkt_val[127][pkt_item[127].index('Arm
 pkt_val[127][pkt_item[127].index('MAVstatus')], pkt_val[127][pkt_item[127].index('Failsafe')] = 255, 255
 
 while True:
-    msgID_to_send = []
     if pkt_val[127][pkt_item[127].index('Mode')] != master.flightmode:
         pkt_val[127][pkt_item[127].index('Mode')] = master.flightmode
         msgID_to_send.extend(127)
@@ -68,11 +67,13 @@ while True:
         continue
     elif msg_type == "SYSTEM_TIME":             # gps utc time
         gpstime = datetime.utcfromtimestamp(msg.time_unix_usec/1e6)
-        pkt_val[128][pkt_item[128].index('SYSTEM_TIME.time_unix_usec')] = int((gpstime.minute*60 + gpstime.second)*1e6 + gpstime.microsecond)
+        pkt_val[128][pkt_item[128].index('SYSTEM_TIME.time_unix_usec')] = int((gpstime.minute*60 + gpstime.second)*1e3 + round(gpstime.microsecond/1e3))
     elif msg_type == "ATTITUDE":              # imu: time, roll, pitch, yaw
         pkt_val[128][pkt_item[128].index('ATTITUDE.roll')] = round(msg.roll*57.2958)
         pkt_val[128][pkt_item[128].index('ATTITUDE.pitch')] = round(msg.pitch*57.2958)
         pkt_val[128][pkt_item[128].index('ATTITUDE.yaw')] = round(msg.yaw*57.2958)
+    elif msg_type == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
+        fix, sat_num = msg.fix_type, msg.satellites_visible
     elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.lat')] = msg.lat
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.lon')] = msg.lon
@@ -87,13 +88,15 @@ while True:
         pkt_val[128][pkt_item[128].index('SCALED_IMU2.zacc')] = msg.zacc
 
     elif msg_type == "HEARTBEAT":             # MAV_STATE
-        pkt_val[127][pkt_item[127].index('MAVstatus')] = msg.system_status 
-        msgID_to_send.extend(127)
+        if pkt_val[127][pkt_item[127].index('MAVstatus')] != msg.system_status:
+            pkt_val[127][pkt_item[127].index('MAVstatus')] = msg.system_status
+            msgID_to_send.extend(127)
     elif msg_type == "HIGH_LATENCY2": # https://mavlink.io/en/messages/common.html#HL_FAILURE_FLAG
-        pkt_val[127][pkt_item[127].index('Failsafe')] = int(math.log(msg.HL_FAILURE_FLAG,2))
-        msgID_to_send.extend(127)
+        if pkt_val[127][pkt_item[127].index('Failsafe')] != int(math.log(msg.HL_FAILURE_FLAG,2)):
+            pkt_val[127][pkt_item[127].index('Failsafe')] = int(math.log(msg.HL_FAILURE_FLAG,2))
+            msgID_to_send.extend(127)
     elif msg_type == "STATUSTEXT":
-        if msg.severity < 4: # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+        if msg.severity < 4 and (pkt_val[127][pkt_item[127].index('Failsafe')] != int(math.log(msg.HL_FAILURE_FLAG,2))): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
             pkt_val[127][pkt_item[127].index('Failsafe')] = int(math.log(msg.HL_FAILURE_FLAG,2))
             msgID_to_send.extend(127)
 
@@ -106,7 +109,7 @@ while True:
     for i in msgID_to_send:
         # store computer system time and gps time
         utctime = datetime.utcnow()
-        pkt_val[i][-2] = int((utctime.minute*60 + utctime.second)*1e6 + utctime.microsecond)
+        pkt_val[i][-2] = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
         for j in range(5,len(pkt_item[i])-1):
             pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])] = pack(byte_num[pkt_space[i][j]], pkt_val[i][j].value)
         # calculae checksum
@@ -115,6 +118,7 @@ while True:
         # send by xbee
         try: xbee001.send_data_broadcast(pkt_bytearray[i])
         except: pass
+    msgID_to_send = []
 
     # Read packet
     try:
@@ -164,7 +168,18 @@ while True:
 
                 for i in range(wp.count()):
                     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)             
-                    master.mav.send(wp.wp(msg.seq)) 
+                    master.mav.send(wp.wp(msg.seq))
+                msg = master.recv_match(type=['MISSION_ACK'],blocking=True) 
+                mission_ack = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+                # print("mission result: ", mission_ack)
+                # msgID_to_send.extend(the_packet_that_includes_mission)
+                # MAV_CMD_MISSION_START ?? or just switch to AUTO mode??
+        
+        # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
+        # master.mav.send(mavutil.mavlink.SET_POSITION_TARGET_GLOBAL_INT(10, sysID, compID, 3,
+        #     int(0b110111111000), lat, lon, alt, 0, 0, 0, 0, 0, 0, 0, 0))
+
+                 
 
         elif received_msgID == 133:
             if int(data[5]) < 10:

@@ -62,6 +62,11 @@ class info:
         133: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
              "Mode_Arm", "OTHER.systime", "checksum"]
     }
+
+    # gcs to uav: get mission status
+    # uav to gcs: send uav mission status, current seq, download mission...
+
+
     
     msgID_send_old = [1,2,3]
     pkt_space_old = {

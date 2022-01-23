@@ -47,18 +47,19 @@ for i in msgID_send:
     pkt_val[i][0], pkt_val[i][1], pkt_val[i][-1] = info.header, i, info.checksum
     pkt_val[i][2], pkt_val[i][3], pkt_val[i][4] = sysID, compID, commID
     pkt_bytearray[i] = bytearray([pkt_val[i][0]])
-    for j in range(1, len(pkt_item[i])):
+    for j in range(1, len(pkt_item[i])-1):
         pkt_bytearray[i].extend(pack(byte_num[pkt_space[i][j]], pkt_val[i][j]))
+    pkt_bytearray[i].extend(pack(byte_num[2], info.checksum))
 pkt_val[127][pkt_item[127].index('Mode')], pkt_val[127][pkt_item[127].index('Arm')] = 255, 255
-pkt_val[127][pkt_item[127].index('MAVstatus')], pkt_val[127][pkt_item[127].index('Failsafe')] = 255, 255
+pkt_val[127][pkt_item[127].index('HEARTBEAT.system_status')], pkt_val[127][pkt_item[127].index('Failsafe')] = 255, 255
 
 while True:
-    if pkt_val[127][pkt_item[127].index('Mode')] != master.flightmode:
-        pkt_val[127][pkt_item[127].index('Mode')] = master.flightmode
-        msgID_to_send.extend(127)
+    if pkt_val[127][pkt_item[127].index('Mode')] !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
+        pkt_val[127][pkt_item[127].index('Mode')] = list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]
+        msgID_to_send.extend([127])
     if pkt_val[127][pkt_item[127].index('Arm')] != master.sysid_state[master.sysid].armed:
         pkt_val[127][pkt_item[127].index('Arm')] = master.sysid_state[master.sysid].armed
-        msgID_to_send.extend(127)
+        msgID_to_send.extend([127])
 
     # Get data from pixhawk via pymavlink
     msg = master.recv_match(blocking=True)
@@ -81,27 +82,27 @@ while True:
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.vx')] = msg.vx
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.vy')] = msg.vy
         pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.vz')] = msg.vz
-        pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.hdg')] = msg.hgd
+        pkt_val[128][pkt_item[128].index('GLOBAL_POSITION_INT.hdg')] = msg.hdg
     elif msg_type == "SCALED_IMU2":
         pkt_val[128][pkt_item[128].index('SCALED_IMU2.xacc')] = msg.xacc
         pkt_val[128][pkt_item[128].index('SCALED_IMU2.yacc')] = msg.yacc
         pkt_val[128][pkt_item[128].index('SCALED_IMU2.zacc')] = msg.zacc
 
     elif msg_type == "HEARTBEAT":             # MAV_STATE
-        if pkt_val[127][pkt_item[127].index('MAVstatus')] != msg.system_status:
-            pkt_val[127][pkt_item[127].index('MAVstatus')] = msg.system_status
-            msgID_to_send.extend(127)
+        if pkt_val[127][pkt_item[127].index('HEARTBEAT.system_status')] != msg.system_status:
+            pkt_val[127][pkt_item[127].index('HEARTBEAT.system_status')] = msg.system_status
+            msgID_to_send.extend([127])
     elif msg_type == "HIGH_LATENCY2": # https://mavlink.io/en/messages/common.html#HL_FAILURE_FLAG
         if pkt_val[127][pkt_item[127].index('Failsafe')] != int(math.log(msg.HL_FAILURE_FLAG,2)):
             pkt_val[127][pkt_item[127].index('Failsafe')] = int(math.log(msg.HL_FAILURE_FLAG,2))
-            msgID_to_send.extend(127)
+            msgID_to_send.extend([127])
     elif msg_type == "STATUSTEXT":
-        if msg.severity < 4 and (pkt_val[127][pkt_item[127].index('Failsafe')] != int(math.log(msg.HL_FAILURE_FLAG,2))): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
-            pkt_val[127][pkt_item[127].index('Failsafe')] = int(math.log(msg.HL_FAILURE_FLAG,2))
-            msgID_to_send.extend(127)
+        if msg.severity < 4 and (pkt_val[127][pkt_item[127].index('Failsafe')] != msg.severity+14): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+            pkt_val[127][pkt_item[127].index('Failsafe')] = msg.severity+14
+            msgID_to_send.extend([127])
 
     if (time.time() - last_sent_time) >= 1.0:
-        msgID_to_send.extend(128)
+        msgID_to_send.extend([128])
         last_sent_time = time.time()
     
     # Send packet
@@ -111,7 +112,7 @@ while True:
         utctime = datetime.utcnow()
         pkt_val[i][-2] = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
         for j in range(5,len(pkt_item[i])-1):
-            pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])] = pack(byte_num[pkt_space[i][j]], pkt_val[i][j].value)
+            pkt_bytearray[i][sum(pkt_space[i][:j]):sum(pkt_space[i][:j+1])] = pack(byte_num[pkt_space[i][j]], pkt_val[i][j])
         # calculae checksum
         chks.accumulate(pkt_bytearray[i][:-2]) 
         pkt_bytearray[i][-2:] = pack(byte_num[2], chks.crc)

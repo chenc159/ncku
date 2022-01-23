@@ -13,29 +13,13 @@ class info:
     msgID_receive = [131, 132, 133]
     pkt_space = {   0: [1,1,1,1,1,4,2],
                     127: [1,1,1,1,1,1,1,1,1,4,2],
-                    128: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2],
+                    128: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2],
                     129: [1,1,1,1,1,1,4,2],
                     130: [1,1,1,1,1,4,4,4,4,4,4,4,4,4,2],
                     131: [1,1,1,1,1,4,1,4,2],
                     132: [1,1,1,1,1,1,1,1,4,4,4,4,4,2],
                     133: [1,1,1,1,1,1,4,2]
                 }
-    
-    # Required message (type and field name)
-    msgs =  {
-        "ID":                   {"sys": 0, "comp": 1, "comm": 22, "time": 0},   
-        "OTHER":                {"sysID": 0, "compID": 1, "commID": 22, "systime": 0},   
-        "SYSTEM_TIME":          {"time_unix_usec": 0, "time_boot_ms": 0}, 
-        "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
-        "SCALED_IMU2":          {"xacc": 0, "yacc": 0, "zacc": 0},
-        "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
-        "GLOBAL_POSITION_INT":  {"time_boot_ms": 0, "lat": 0, "lon": 0, "alt": 0, "vx": 0, "vy": 0, "vz": 0, "hdg": 0},
-        "HEARTBEAT":            {"system_status": 99},
-        "BATTERY_STATUS":       {"battery_remaining": 0},
-        "HIGH_LATENCY2":        {"HL_FAILURE_FLAG": 99},
-        "STATUSTEXT":           {"severity": 99}
-    } #AHRS2, AHRS3
-    
 
 
     # Initialize packet
@@ -47,7 +31,8 @@ class info:
         127: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID", 
             "Mode", "Arm", "HEARTBEAT.system_status", "Failsafe", "OTHER.systime", "checksum"],
         128: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",  
-            "GLOBAL_POSITION_INT.lat", "GLOBAL_POSITION_INT.lon", "GLOBAL_POSITION_INT.alt", "GLOBAL_POSITION_INT.vx", "GLOBAL_POSITION_INT.vy", "GLOBAL_POSITION_INT.vz", "GLOBAL_POSITION_INT.hdg",
+            "GLOBAL_POSITION_INT.lat", "GLOBAL_POSITION_INT.lon", "GLOBAL_POSITION_INT.alt", 
+            "GLOBAL_POSITION_INT.vx", "GLOBAL_POSITION_INT.vy", "GLOBAL_POSITION_INT.vz", "GLOBAL_POSITION_INT.hdg",
             "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "SCALED_IMU2.xacc", "SCALED_IMU2.yacc", "SCALED_IMU2.zacc", 
             "Dyn_waypt_lat", "Dyn_waypt_lon", "SYSTEM_TIME.time_unix_usec", "OTHER.systime", "checksum"],
         129: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
@@ -66,6 +51,22 @@ class info:
     # gcs to uav: get mission status
     # uav to gcs: send uav mission status, current seq, download mission...
 
+    
+    # Required message (type and field name)
+    msgs =  {
+        "ID":                   {"sys": 0, "comp": 1, "comm": 22, "time": 0},   
+        "OTHER":                {"sysID": 0, "compID": 1, "commID": 22, "systime": 0},   
+        "SYSTEM_TIME":          {"time_unix_usec": 0, "time_boot_ms": 0}, 
+        "ATTITUDE":             {"time_boot_ms": 0, "roll": 0, "pitch": 0, "yaw": 0},
+        "SCALED_IMU2":          {"xacc": 0, "yacc": 0, "zacc": 0},
+        "GPS_RAW_INT":          {"time_usec": 0, "fix_type": 0, "satellites_visible": 0},
+        "GLOBAL_POSITION_INT":  {"time_boot_ms": 0, "lat": 0, "lon": 0, "alt": 0, "vx": 0, "vy": 0, "vz": 0, "hdg": 0},
+        "HEARTBEAT":            {"system_status": 99},
+        "BATTERY_STATUS":       {"battery_remaining": 0},
+        "HIGH_LATENCY2":        {"HL_FAILURE_FLAG": 99},
+        "STATUSTEXT":           {"severity": 99}
+    } #AHRS2, AHRS3
+    
 
     
     msgID_send_old = [1,2,3]

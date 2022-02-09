@@ -248,6 +248,14 @@ class packet132(object):
         self.lat = 0
         self.lon = 0
         self.alt = 0
+        # for missions:
+        self.Mission_modes = []
+        self.Mission_formation = []
+        self.Mission_pass_radius = []
+        self.Mission_lat = []
+        self.Mission_lon = []
+        self.Mission_alt = []
+
     def unpackpkt(self, data):
         self.Waypt_seqID = data[5]
         self.Mission_mode = unpack('i',data[6:10])[0]

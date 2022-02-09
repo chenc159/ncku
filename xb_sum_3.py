@@ -17,9 +17,9 @@ rate = 4 # desired transmission rate
 master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
 
 # # Connect xbee1
-# xbee001 = DigiMeshDevice('/dev/ttyUSB0', 115200)
-# remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040F5C5DB"))
-# xbee001.open(force_settings=True)
+xbee001 = DigiMeshDevice('/dev/ttyUSB0', 115200)
+remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040F5C5DB"))
+xbee001.open(force_settings=True)
 
 # # Connect xbee2
 # xbee002 = DigiMeshDevice('/dev/ttyUSB2', 115200)
@@ -37,8 +37,6 @@ Dyn_waypt_lat, Dyn_waypt_lon = c_int(0), c_int(0)
 fix, sat_num = c_int(0), c_int(0)
 mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
 
-# packet127(sysID, compID, commID, mode, arm, system_status, failsafe)
-# packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time)
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
     131: packet131(),
@@ -48,26 +46,6 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
 
 last_sent_time, msgID_to_send = 0, [] 
 seq_togo = 0
-
-# msgID_send, msgID_receive = info.msgID_send, info.msgID_receive
-# Initialize packets
-# send_pkt_num: list of packet number; item: items in packet; space: space allocation of packet
-# val: values of packet items; bytearray: bytearray of the packet value (to be sent by xbee); res: unpacked result of the packed packet
-# convert: unit conversion, preferred int; byte_num: get format letter from space allocation for un/pack usage
-# pkt_item, pkt_space = info.pkt_item, info.pkt_space
-# convert, byte_num = info.convert, info.byte_num
-# pkt_val, pkt_bytearray, res = {}, {}, {}
-# for i in msgID_send:
-#     res[i] = [0 for k in range(len(pkt_item[i]))]
-#     pkt_val[i] = [0 for k in range(len(pkt_item[i]))]
-#     pkt_val[i][0], pkt_val[i][1], pkt_val[i][-1] = info.header, i, info.checksum
-#     pkt_val[i][2], pkt_val[i][3], pkt_val[i][4] = sysID, compID, commID
-#     pkt_bytearray[i] = bytearray([pkt_val[i][0]])
-#     for j in range(1, len(pkt_item[i])-1):
-#         pkt_bytearray[i].extend(pack(byte_num[pkt_space[i][j]], pkt_val[i][j]))
-#     pkt_bytearray[i].extend(pack(byte_num[2], info.checksum))
-# pkt_val[127][pkt_item[127].index('Mode')], pkt_val[127][pkt_item[127].index('Arm')] = 255, 255
-# pkt_val[127][pkt_item[127].index('HEARTBEAT.system_status')], pkt_val[127][pkt_item[127].index('Failsafe')] = 255, 255
 
 while True:
     if mode.value !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
@@ -155,7 +133,7 @@ while True:
             print('waypt_seqID: ', data[5]) 
             print('Mission_mode: ', unpack('i',data[6:10])[0]) 
             print('Formation: ',  unpack('i',data[10:14])[0])           
-            print('Pass_radius: ',unpack('i',data[14:18])[0])
+            print('Accept_radius: ',unpack('i',data[14:18])[0])
             print('lat: ',unpack('i',data[18:22])[0])
             print('lng: ',unpack('i',data[22:26])[0])
             print('alt: ',unpack('i',data[26:30])[0])
@@ -172,7 +150,7 @@ while True:
                         pkt[received_msgID].Mission_seq[i],
                         frame,
                         info.mission_mode_mapping[pkt[received_msgID].Mission_modes[i]],
-                        0, 0, pkt[131].Desired_dist, pkt[received_msgID].Mission_pass_radius[i], 0, 0,
+                        0, 0, pkt[received_msgID].Mission_accept_radius[i], 0, 0, 0,
                         pkt[received_msgID].Mission_lat[i]/1e7, pkt[received_msgID].Mission_lon[i]/1e7, pkt[received_msgID].Mission_alt[i]))
                 master.waypoint_clear_all_send()
                 master.waypoint_count_send(wp.count())
@@ -201,11 +179,11 @@ while True:
         pass
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
-    if (master.flightmode == 'GUIDED') and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[received_msgID].Mission_alt):
-        dx, dy, dz = pm.geodetic2enu(lat.value, lon.value, alt.value, pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo])
+    if (master.flightmode == 'GUIDED') and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
+        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, pkt[132].Mission_lat[seq_togo]/1e7, pkt[132].Mission_lon[seq_togo]/1e7, pkt[132].Mission_alt[seq_togo])
         if (seq_togo < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= pkt[131].Desired_dist**2):
             seq_togo += 1
-        master.mav.send(mavutil.mavlink.SET_POSITION_TARGET_GLOBAL_INT(10, sysID, compID, 3, int(0b110111111000), 
+        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
             pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo], 0, 0, 0, 0, 0, 0, 0, 0))
     
 

@@ -244,14 +244,14 @@ class packet132(object):
         self.Waypt_seqID = 0
         self.Mission_mode = 0
         self.Formation = 0
-        self.Pass_radius = 0
+        self.Accept_radius = 0
         self.lat = 0
         self.lon = 0
         self.alt = 0
         # for missions:
         self.Mission_modes = []
         self.Mission_formation = []
-        self.Mission_pass_radius = []
+        self.Mission_accept_radius = []
         self.Mission_lat = []
         self.Mission_lon = []
         self.Mission_alt = []
@@ -260,7 +260,7 @@ class packet132(object):
         self.Waypt_seqID = data[5]
         self.Mission_mode = unpack('i',data[6:10])[0]
         self.Formation = unpack('i',data[10:14])[0]
-        self.Pass_radius = unpack('i',data[14:18])[0]
+        self.Accept_radius = unpack('i',data[14:18])[0]
         self.lat = unpack('i',data[18:22])[0]
         self.lon = unpack('i',data[22:26])[0]
         self.alt = unpack('i',data[26:30])[0]
@@ -269,14 +269,14 @@ class packet132(object):
         # self.Mission_seq = [k for k in range(Waypt_count)]
         self.Mission_modes = [999 for k in range(Waypt_count)]
         self.Mission_formation = [999 for k in range(Waypt_count)]
-        self.Mission_pass_radius =  [999 for k in range(Waypt_count)]
+        self.Mission_accept_radius =  [999 for k in range(Waypt_count)]
         self.Mission_lat = [999 for k in range(Waypt_count)]
         self.Mission_lon = [999 for k in range(Waypt_count)]
         self.Mission_alt = [999 for k in range(Waypt_count)]
     def mission_save(self):
         self.Mission_modes[self.Waypt_seqID] = self.Mission_mode
         self.Mission_formation[self.Waypt_seqID] =self.Formation
-        self.Mission_pass_radius[self.Waypt_seqID] = self.Pass_radius
+        self.Mission_accept_radius[self.Waypt_seqID] = self.Accept_radius
         self.Mission_lat[self.Waypt_seqID] = self.lat
         self.Mission_lon[self.Waypt_seqID] = self.lon
         self.Mission_alt[self.Waypt_seqID] = self.alt

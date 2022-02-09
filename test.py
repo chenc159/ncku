@@ -3,7 +3,7 @@ from digi.xbee.devices import DigiMeshDevice
 from struct import *
 import copy
 from ctypes import *
-from info import info 
+from info import info, packet127, packet128
 from datetime import datetime
 
 
@@ -67,36 +67,43 @@ readxbee_timer(rx, 0.01)
 # t = MyThread()
 # t.start()
 
+# class packet1(object):
+#     def __init__(self, msgID, lat, lon, alt):
+#         self.msgID = msgID
+#         self.lat = lat
+#         self.lon = lon
+#         self.alt = alt
+#     def pack():
+#         pass
 
-msgID_send, msgID_receive = info.msgID_send, info.msgID_receive
-# Initialize packets
-# send_pkt_num: list of packet number; item: items in packet; space: space allocation of packet
-# val: values of packet items; bytearray: bytearray of the packet value (to be sent by xbee); res: unpacked result of the packed packet
-# convert: unit conversion, preferred int; byte_num: get format letter from space allocation for un/pack usage
-pkt_item, pkt_space = info.pkt_item, info.pkt_space
-convert, byte_num = info.convert, info.byte_num
-pkt_val, pkt_bytearray, res = {}, {}, {}
-for i in msgID_send:
-    res[i] = [0 for k in range(len(pkt_item[i]))]
-    pkt_val[i] = [0 for k in range(len(pkt_item[i]))]
-    pkt_val[i][0], pkt_val[i][1], pkt_val[i][-1] = info.header, i, info.checksum
-    pkt_val[i][2], pkt_val[i][3], pkt_val[i][4] = 1, 2, 33
-    pkt_bytearray[i] = bytearray([pkt_val[i][0]])
-    for j in range(1, len(pkt_item[i])-1):
-        pkt_bytearray[i].extend(pack(byte_num[pkt_space[i][j]], pkt_val[i][j]))
-    pkt_bytearray[i].extend(pack(byte_num[2], info.checksum))
-pkt_val[127][pkt_item[127].index('Mode')], pkt_val[127][pkt_item[127].index('Arm')] = 255, 255
-pkt_val[127][pkt_item[127].index('HEARTBEAT.system_status')], pkt_val[127][pkt_item[127].index('Failsafe')] = 255, 255
+# lat = c_int(0)
+# lon = c_int(1)
+# alt = c_int(2)
 
-print(pkt_val[127])
+# pkt1 = packet1(99, lat,lon,alt)
+# print(pkt1.lat)
 
-pkt_val[127][pkt_item[127].index('Mode')] = 3
-pkt_val[127][pkt_item[127].index('Arm')] = 10
-pkt_val[127][pkt_item[127].index('HEARTBEAT.system_status')] = 66
-pkt_val[127][pkt_item[127].index('Failsafe')] = 99
+# # lat_p = pointer(lat)
+# # lat_p[0] = 100
 
-print(pkt_val[127])
+# lat.value = 88
+# print(pkt1.lat)
+# print(pkt1.lat.value)
 
-utctime = datetime.utcnow()
-pkt_val[127][-2] = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
-print(pkt_val[127])
+sysID, compID, commID = 0, 1, 22
+gps_time = c_int(0)
+roll, pitch, yaw, xacc, yacc, zacc = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)  
+lat, lon, alt, vx, vy, vz, hdg = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)     
+Dyn_waypt_lat, Dyn_waypt_lon = c_int(0), c_int(0)
+fix, sat_num = c_int(0), c_int(0)
+mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
+
+pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
+    128: packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time)
+}
+
+print(pkt[128].packpkt())
+
+lat.value = 255
+print(pkt[128].packpkt())
+

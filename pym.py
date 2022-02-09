@@ -2,6 +2,7 @@
 This file gets the information of the drone by using pymavlink.
 '''
 
+from socket import timeout
 from pymavlink import mavutil, mavwp
 import time
 from datetime import datetime
@@ -63,14 +64,14 @@ while True:
                 failsafe = False
         elif msg_type == "MISSION_CURRENT":
             current_mission_seq = msg.seq
-        print("\n", msg)
-        print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
-        print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
-        print('rpy: ', roll, pitch, yaw)
-        print('gps: ', fix, num, lat, lon, alt)
-        print('v/hdg: ', vx, vy, vz, heading)
-        print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
-        print('mode: ', master.flightmode)
+        # print("\n", msg)
+        # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
+        # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
+        # print('rpy: ', roll, pitch, yaw)
+        # print('gps: ', fix, num, lat, lon, alt)
+        # print('v/hdg: ', vx, vy, vz, heading)
+        # print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
+        # print('mode: ', master.flightmode)
         # print('armed: ', master.sysid_state[master.sysid].armed)
         # print(master.start_time, master.uptime)
         # print(time.localtime(master.start_time))
@@ -107,17 +108,29 @@ while True:
                         sysID, compID,
                         i,
                         frame,
-                        info.mission_mode_mapping[2],
+                        info.mission_mode_mapping[0],
                         0, 0, 0, 0, 0, 0,
                         24+i*0.1, 121+i*0.1, 3))
                 master.waypoint_clear_all_send()                                     
                 master.waypoint_count_send(int(mission_num))
+                # ack = 99
+                # while ack==99:
+                #     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
+                #     print(msg)
+                #     master.mav.send(wp.wp(msg.seq))
+                #     msg = master.recv_match(type=['MISSION_ACK'],blocking=True,timeout=0.1)
+                #     try: ack = msg.type
+                #     except: pass
+                # print(ack)
+
                 for i in range(int(mission_num)):
                     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
                     print(msg)
                     master.mav.send(wp.wp(msg.seq))
+                    print(wp.wp(msg.seq))
                 msg = master.recv_match(type=['MISSION_ACK'],blocking=True) 
                 print(msg)
+                # c = input('waiting...')
                 # mission_ack = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
                 # print("mission result: ", mission_ack) 
         except: pass

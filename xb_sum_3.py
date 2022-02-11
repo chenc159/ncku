@@ -5,7 +5,7 @@ from ctypes import *
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
-from info import info, packet127, packet128, packet131, packet132
+from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet134
 
 # Connect pixhawk
 master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
@@ -31,16 +31,24 @@ chks = mavutil.x25crc()
 # Initialize parameters
 sysID, compID, commID = master.target_system, master.target_component, 22
 gps_time = c_int(0)
-roll, pitch, yaw, xacc, yacc, zacc = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)  
+roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)  
 lat, lon, alt, vx, vy, vz, hdg = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)     
-Dyn_waypt_lat, Dyn_waypt_lon = c_int(0), c_int(0)
 fix, sat_num = c_int(0), c_int(0)
 mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
+mission_ack = c_int(255)
+Dyn_waypt_lat, Dyn_waypt_lon = c_int(0), c_int(0)
+
+others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
+others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
+others_vx, others_vy, others_vz, others_hdg = c_int(0), c_int(0), c_int(0), c_int(0)
 
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
+    129: packet129(sysID, compID, commID, mission_ack),
+    130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg),
     131: packet131(),
-    132: packet132()
+    132: packet132(),
+    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg)
 }
 
 
@@ -48,8 +56,12 @@ last_sent_time, msgID_to_send = 0, []
 seq_togo = 0
 
 while True:
-    if mode.value !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
-        mode.value = list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]
+    try:
+        if mode.value !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
+            mode.value = list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]
+            msgID_to_send.extend([127])
+    except:
+        mode.value = 99
         msgID_to_send.extend([127])
     if arm.value != master.sysid_state[master.sysid].armed:
         arm.value = master.sysid_state[master.sysid].armed #0: disarmed, 125: armed
@@ -74,7 +86,7 @@ while True:
         vx.value, vy.value, vz.value, hdg.value = msg.vx, msg.vy, msg.vz, msg.hdg
     elif msg_type == "SCALED_IMU2":
         xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
-
+        xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro
     elif msg_type == "HEARTBEAT":             # MAV_STATE
         if system_status.value != msg.system_status:
             system_status.value = msg.system_status
@@ -87,9 +99,14 @@ while True:
         if msg.severity < 4 and (failsafe.value != msg.severity+14): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
             failsafe.value = msg.severity+14
             msgID_to_send.extend([127])
+    elif msg_type == "MISSION_ACK":
+        mission_ack.value = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+        msgID_to_send.extend([129])
+        # print('ack: ', mission_ack.value) 
 
     if (time.time() - last_sent_time) >= 1.0:
         msgID_to_send.extend([128])
+        msgID_to_send.extend([134])
         last_sent_time = time.time()
     
     # Send packet
@@ -147,9 +164,9 @@ while True:
                 for i in range(pkt[131].Waypt_count):
                     wp.add(mavutil.mavlink.MAVLink_mission_item_message(
                         sysID, compID,
-                        pkt[received_msgID].Mission_seq[i],
+                        i,
                         frame,
-                        info.mission_mode_mapping[pkt[received_msgID].Mission_modes[i]],
+                        pkt[received_msgID].Mission_modes[i],
                         0, 0, pkt[received_msgID].Mission_accept_radius[i], 0, 0, 0,
                         pkt[received_msgID].Mission_lat[i]/1e7, pkt[received_msgID].Mission_lon[i]/1e7, pkt[received_msgID].Mission_alt[i]))
                 master.waypoint_clear_all_send()
@@ -160,12 +177,7 @@ while True:
                     print(msg)
                     print(wp.wp(msg.seq))
                     master.mav.send(wp.wp(msg.seq))
-                msg = master.recv_match(type=['MISSION_ACK'],blocking=True)
-                mission_ack = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
-                print('ack: ', mission_ack)
-                # print("mission result: ", mission_ack)
-                # msgID_to_send.extend(the_packet_that_includes_mission_ack_or_other_info)     
-
+                
         elif received_msgID == 133:
             print(data[5], data)
             if int(data[5]) < 10:
@@ -175,6 +187,10 @@ while True:
                 master.motors_armed_wait()
             elif int(data[5]) == 11:
                 master.arducopter_disarm()
+        
+        elif received_msgID == 134:
+            others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value = pkt[received_msgID].unpackpkt(data)
+            msgID_to_send.extend([130])
     except:
         pass
 
@@ -185,7 +201,7 @@ while True:
             seq_togo += 1
         master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
             pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo], 0, 0, 0, 0, 0, 0, 0, 0))
-    
+        Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo]
 
 
 

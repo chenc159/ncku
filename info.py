@@ -40,7 +40,7 @@ class info:
             "ATTITUDE.roll", "ATTITUDE.pitch",  "ATTITUDE.yaw", "SCALED_IMU2.xacc", "SCALED_IMU2.yacc", "SCALED_IMU2.zacc", 
             "Dyn_waypt_lat", "Dyn_waypt_lon", "SYSTEM_TIME.time_unix_usec", "OTHER.systime", "checksum"],
         129: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
-             "Commandmessage", "OTHER.systime", "checksum"],
+             "mission_ack", "OTHER.systime", "checksum"],
         130: ["header", "msgID", "OTHER.sysID", "OTHER.compID", "OTHER.commID",
              "Other_UAV_lat", "Other_UAV_lon", "Other_UAV_alt", "Other_UAV_vx", "Other_UAV_vy", "Other_UAV_vz", "Other_UAV_hdg", "Other_UAV_gpstime", "OTHER.systime", "checksum"],
         # GCS to UAV
@@ -181,6 +181,7 @@ class packet00(object):
         return pack('<BBBB', self.msgID, self.sysID, self.compID, self.commID) #, sys_time)
 
 
+'''UAV 2 GCS'''
 class packet127(object):
     def __init__(self, sysID, compID, commID, mode, arm, system_status, failsafe):
         # int
@@ -195,8 +196,6 @@ class packet127(object):
         self.failsafe = failsafe
 
     def packpkt(self):
-        # utctime = datetime.utcnow()
-        # sys_time =  int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
         return pack('<BBBBBBBB', self.msgID, self.sysID, self.compID, self.commID, 
                     self.mode.value, self.arm.value, self.system_status.value, self.failsafe.value)
 
@@ -231,6 +230,43 @@ class packet128(object):
                     self.xacc.value, self.yacc.value, self.zacc.value, 
                     self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.gps_time.value)
 
+class packet129(object):
+    def __init__(self, sysID, compID, commID, mission_ack):
+        # int
+        self.msgID = 129
+        self.sysID = sysID
+        self.compID = compID
+        self.commID = commID
+        # c_int
+        self.mission_ack = mission_ack
+
+    def packpkt(self):
+        return pack('<BBBBB', self.msgID, self.sysID, self.compID, self.commID,
+                     self.mission_ack.value)
+
+class packet130(object):
+    def __init__(self, others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg):
+        # int
+        self.msgID = 130
+        # c_int
+        self.others_sysID = others_sysID
+        self.others_compID = others_compID
+        self.others_commID = others_commID
+        self.others_lat = others_lat
+        self.others_lon = others_lon
+        self.others_alt = others_alt
+        self.others_vx = others_vx
+        self.others_vy = others_vy
+        self.others_vz = others_vz
+        self.others_hdg = others_hdg
+        # self.others_gps_time = 
+
+    def packpkt(self):
+        return pack('<BBBBiiiiiii', self.msgID, self.others_sysID.value, self.others_compID.value, self.others_commID.value,
+                     self.others_lat.value, self.others_lon.value, self.others_alt.value, 
+                     self.others_vx.value, self.others_vy.value, self.others_vz.value, self.others_hdg.value)
+
+'''GCS 2 UAV'''
 class packet131(object):
     def __init__(self):
         self.Waypt_count = 0
@@ -264,6 +300,7 @@ class packet132(object):
         self.lat = unpack('i',data[18:22])[0]
         self.lon = unpack('i',data[22:26])[0]
         self.alt = unpack('i',data[26:30])[0]
+    
     # for missions:
     def mission_init(self, Waypt_count):
         # self.Mission_seq = [k for k in range(Waypt_count)]
@@ -281,3 +318,48 @@ class packet132(object):
         self.Mission_lon[self.Waypt_seqID] = self.lon
         self.Mission_alt[self.Waypt_seqID] = self.alt
 
+'''UAV 2 UAV'''
+class packet134(object):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg):
+        # int
+        self.msgID = 134
+        self.sysID = sysID
+        self.compID = compID
+        self.commID = commID
+        # c_int
+        self.lat = lat
+        self.lon = lon
+        self.alt = alt
+        self.vx = vx
+        self.vy = vy
+        self.vz = vz
+        self.xacc = xacc
+        self.yacc = yacc
+        self.xgyro = xgyro
+        self.ygyro = ygyro
+        self.zgyro = zgyro
+        self.hdg = hdg
+
+    def packpkt(self):
+        return pack('<BBBBiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.lat.value, self.lon.value, self.alt.value, self.vx.value, self.vy.value, self.vz.value,
+                    self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
+                    self.hdg.value)
+    
+    def unpackpkt(self, data):
+        self.others_sysID = data[2]
+        self.others_compID = data[3]
+        self.others_commID = data[4]
+        self.others_lat = unpack('i',data[5:9])[0]
+        self.others_lon = unpack('i',data[9:13])[0]
+        self.others_alt = unpack('i',data[13:17])[0]
+        self.others_vx = unpack('i',data[17:21])[0]
+        self.others_vy = unpack('i',data[21:25])[0]
+        self.others_vz = unpack('i',data[25:29])[0]
+        self.others_xacc = unpack('i',data[29:33])[0]
+        self.others_yacc = unpack('i',data[33:37])[0]
+        self.others_xgyro = unpack('i',data[37:41])[0]
+        self.others_ygyro = unpack('i',data[41:45])[0]
+        self.others_zgyro = unpack('i',data[45:49])[0]
+        self.others_hdg = unpack('i',data[49:51])[0]
+        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg

@@ -320,6 +320,12 @@ class packet132(object):
         self.Mission_lon[self.Waypt_seqID] = self.lon
         self.Mission_alt[self.Waypt_seqID] = self.alt
 
+class packet133(object):
+    def __init__(self):
+        self.mode_arm = 255
+    def unpackpkt(self, data):
+        self.mode_arm = int(data[5])
+
 '''UAV 2 UAV'''
 class packet134(object):
     def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg):

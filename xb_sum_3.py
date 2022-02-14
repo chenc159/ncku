@@ -5,7 +5,7 @@ from ctypes import *
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
-from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet134
+from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134
 
 # Connect pixhawk
 master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
@@ -48,6 +48,7 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe, 
     130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg),
     131: packet131(),
     132: packet132(),
+    133: packet133(),
     134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg)
 }
 
@@ -175,32 +176,35 @@ while True:
                 # for i in range(wp.count()):
                 mission_ack.value = 255
                 while (mission_ack.value == 255):
-                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
+                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True, timeout=0.2)
                     print(msg)
                     print(wp.wp(msg.seq))
                     master.mav.send(wp.wp(msg.seq))
                     msg = master.recv_match(type=['MISSION_ACK'], blocking=True, timeout=0.1)
                     try: 
                         mission_ack.value = msg.type
+                        print(mission_ack.value)
                         msgID_to_send.extend([129])
                     except: pass
 
                 
         elif received_msgID == 133:
             print(data[5], data)
-            if int(data[5]) < 10:
-                master.set_mode(int(data[5]))
-            elif int(data[5]) == 10:
-                master.arducopter_arm()
-                master.motors_armed_wait()
-            elif int(data[5]) == 11:
-                master.arducopter_disarm()
+            pkt[received_msgID].unpackpkt(data)
         
         elif received_msgID == 134:
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value = pkt[received_msgID].unpackpkt(data)
             msgID_to_send.extend([130])
     except:
         pass
+
+    if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value):
+        master.set_mode(pkt[133].mode_arm)
+    elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed:
+        master.arducopter_arm()
+        # master.motors_armed_wait()
+    elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed:
+        master.arducopter_disarm()
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):

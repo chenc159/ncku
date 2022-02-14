@@ -176,7 +176,10 @@ while True:
                 # for i in range(wp.count()):
                 mission_ack.value = 255
                 while (mission_ack.value == 255):
-                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True, timeout=0.2)
+                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True, timeout=1)
+                    if msg == 'None':
+                        print('is none')
+                        continue
                     print(msg)
                     print(wp.wp(msg.seq))
                     master.mav.send(wp.wp(msg.seq))

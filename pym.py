@@ -64,6 +64,8 @@ while True:
                 failsafe = False
         elif msg_type == "MISSION_CURRENT":
             current_mission_seq = msg.seq
+        elif msg_type == "MISSION_ACK":
+            print(msg.type)
         # print("\n", msg)
         # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
@@ -128,8 +130,7 @@ while True:
                     print(msg)
                     master.mav.send(wp.wp(msg.seq))
                     print(wp.wp(msg.seq))
-                msg = master.recv_match(type=['MISSION_ACK'],blocking=True) 
-                print(msg)
+                
                 # c = input('waiting...')
                 # mission_ack = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
                 # print("mission result: ", mission_ack) 

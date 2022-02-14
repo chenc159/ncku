@@ -183,7 +183,7 @@ class packet00(object):
 
 '''UAV 2 GCS'''
 class packet127(object):
-    def __init__(self, sysID, compID, commID, mode, arm, system_status, failsafe):
+    def __init__(self, sysID, compID, commID, mode, arm, system_status, failsafe, fix, sat_num):
         # int
         self.msgID = 127
         self.sysID = sysID
@@ -194,10 +194,12 @@ class packet127(object):
         self.arm = arm
         self.system_status = system_status
         self.failsafe = failsafe
+        self.fix = fix 
+        self.sat_num = sat_num
 
     def packpkt(self):
-        return pack('<BBBBBBBB', self.msgID, self.sysID, self.compID, self.commID, 
-                    self.mode.value, self.arm.value, self.system_status.value, self.failsafe.value)
+        return pack('<BBBBBBBBBB', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.mode.value, self.arm.value, self.system_status.value, self.failsafe.value, self.fix.value, self.sat_num.value)
 
 class packet128(object):
     def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time):

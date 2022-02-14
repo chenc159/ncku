@@ -42,7 +42,7 @@ others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
 others_vx, others_vy, others_vz, others_hdg = c_int(0), c_int(0), c_int(0), c_int(0)
 
-pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
+pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe, fix, sat_num),
     128: packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
     129: packet129(sysID, compID, commID, mission_ack),
     130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg),
@@ -99,9 +99,9 @@ while True:
         if msg.severity < 4 and (failsafe.value != msg.severity+14): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
             failsafe.value = msg.severity+14
             msgID_to_send.extend([127])
-    elif msg_type == "MISSION_ACK":
-        mission_ack.value = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
-        msgID_to_send.extend([129])
+    # elif msg_type == "MISSION_ACK":
+    #     mission_ack.value = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+    #     msgID_to_send.extend([129])
         # print('ack: ', mission_ack.value) 
 
     if (time.time() - last_sent_time) >= 1.0:
@@ -172,11 +172,19 @@ while True:
                 master.waypoint_clear_all_send()
                 master.waypoint_count_send(wp.count())
                 print(wp.count())
-                for i in range(wp.count()):
+                # for i in range(wp.count()):
+                mission_ack.value = 255
+                while (mission_ack.value == 255):
                     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
                     print(msg)
                     print(wp.wp(msg.seq))
                     master.mav.send(wp.wp(msg.seq))
+                    msg = master.recv_match(type=['MISSION_ACK'], blocking=True, timeout=0.1)
+                    try: 
+                        mission_ack.value = msg.type
+                        msgID_to_send.extend([129])
+                    except: pass
+
                 
         elif received_msgID == 133:
             print(data[5], data)

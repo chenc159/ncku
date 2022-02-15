@@ -130,7 +130,7 @@ while True:
         chks.accumulate(pkt_bytearray[:]) 
         pkt_bytearray.extend(pack('H', chks.crc))
         # send by xbee
-        if i == 130:
+        if i == 134:
             try: xbee001.send_data_broadcast(pkt_bytearray)
             except: pass
         else:

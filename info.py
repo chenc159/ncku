@@ -353,7 +353,8 @@ class packet134(object):
 
     def packpkt(self):
         return pack('<BBBBiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
-                    self.lat.value, self.lon.value, self.alt.value, self.vx.value, self.vy.value, self.vz.value,
+                    self.lat.value, self.lon.value, self.alt.value,
+                    self.vx.value, self.vy.value, self.vz.value,
                     self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
                     self.hdg.value, self.gps_time.value)
     
@@ -372,6 +373,6 @@ class packet134(object):
         self.others_xgyro = unpack('i',data[37:41])[0]
         self.others_ygyro = unpack('i',data[41:45])[0]
         self.others_zgyro = unpack('i',data[45:49])[0]
-        self.others_hdg = unpack('i',data[49:51])[0]
-        self.others_gps_time = unpack('i',data[51:55])[0]
+        self.others_hdg = unpack('i',data[49:53])[0]
+        self.others_gps_time = unpack('i',data[53:57])[0]
         return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_gps_time

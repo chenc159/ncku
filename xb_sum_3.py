@@ -47,7 +47,7 @@ others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
     129: packet129(sysID, compID, commID, mission_ack),
-    130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
+    130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
     131: packet131(),
     132: packet132(),
     133: packet133(),
@@ -226,9 +226,9 @@ while True:
         master.arducopter_disarm()
     elif (pkt[133].mode_arm == 12):
         takeoff_alt = 20
+        master.set_mode(4)
         master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
             current_alt, current_lon, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
-        pass
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):

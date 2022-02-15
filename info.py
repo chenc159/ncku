@@ -248,12 +248,12 @@ class packet129(object):
                      self.mission_ack.value)
 
 class packet130(object):
-    def __init__(self, others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time):
+    def __init__(self, sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time):
         # int
         self.msgID = 130
+        self.sysID = sysID
         # c_int
         self.others_sysID = others_sysID
-        self.others_compID = others_compID
         self.others_commID = others_commID
         self.others_lat = others_lat
         self.others_lon = others_lon
@@ -265,7 +265,7 @@ class packet130(object):
         self.others_gps_time = others_gps_time
 
     def packpkt(self):
-        return pack('<BBBBiiiiiiii', self.msgID, self.others_sysID.value, self.others_compID.value, self.others_commID.value,
+        return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
                      self.others_lat.value, self.others_lon.value, self.others_alt.value, 
                      self.others_vx.value, self.others_vy.value, self.others_vz.value, 
                      self.others_hdg.value, self.others_gps_time.value)

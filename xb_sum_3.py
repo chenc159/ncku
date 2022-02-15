@@ -89,7 +89,7 @@ while True:
         pitch.value = round(msg.pitch*57.2958)
         yaw.value = round(msg.yaw*57.2958)
     elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
-        lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.alt
+        lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.relative_alt
         vx.value, vy.value, vz.value, hdg.value = msg.vx, msg.vy, msg.vz, msg.hdg
     elif msg_type == "SCALED_IMU2":           # imu: linear acceleration and angular velocity
         xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc

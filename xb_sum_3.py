@@ -59,7 +59,7 @@ last_sent_time, msgID_to_send = 0, []
 seq_togo = 0
 
 msg = None
-while msg == None
+while msg == None:
     print("waiting for RAW_IMU...")
     msg = master.recv_match(type=['RAW_IMU'],blocking=True, timeout=1)
 print("RAW_IMU received")

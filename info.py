@@ -183,7 +183,7 @@ class packet00(object):
 
 '''UAV 2 GCS'''
 class packet127(object):
-    def __init__(self, sysID, compID, commID, mode, arm, system_status, failsafe, fix, sat_num):
+    def __init__(self, sysID, compID, commID, mode, arm, system_status, failsafe):
         # int
         self.msgID = 127
         self.sysID = sysID
@@ -194,15 +194,13 @@ class packet127(object):
         self.arm = arm
         self.system_status = system_status
         self.failsafe = failsafe
-        self.fix = fix 
-        self.sat_num = sat_num
 
     def packpkt(self):
-        return pack('<BBBBBBBBBB', self.msgID, self.sysID, self.compID, self.commID, 
-                    self.mode.value, self.arm.value, self.system_status.value, self.failsafe.value, self.fix.value, self.sat_num.value)
+        return pack('<BBBBBBBB', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.mode.value, self.arm.value, self.system_status.value, self.failsafe.value)
 
 class packet128(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time):
         # int
         self.msgID = 128
         self.sysID = sysID
@@ -212,6 +210,8 @@ class packet128(object):
         self.lat = lat
         self.lon = lon
         self.alt = alt
+        self.fix = fix 
+        self.sat_num = sat_num
         self.vx = vx
         self.vy = vy
         self.vz = vz
@@ -226,8 +226,9 @@ class packet128(object):
         self.Dyn_waypt_lon = Dyn_waypt_lon
         self.gps_time = gps_time
     def packpkt(self):
-        return pack('<BBBBiiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
-                    self.lat.value, self.lon.value, self.alt.value, self.vx.value, self.vy.value, self.vz.value,
+        return pack('<BBBBiiiiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.lat.value, self.lon.value, self.alt.value, self.fix.value, self.sat_num.value,
+                    self.vx.value, self.vy.value, self.vz.value,
                     self.hdg.value, self.roll.value, self.pitch.value, self.yaw.value,
                     self.xacc.value, self.yacc.value, self.zacc.value, 
                     self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.gps_time.value)

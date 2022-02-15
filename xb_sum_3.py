@@ -44,8 +44,8 @@ others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
 others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)
 
-pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe, fix, sat_num),
-    128: packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
+pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
+    128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
     129: packet129(sysID, compID, commID, mission_ack),
     130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
     131: packet131(),
@@ -95,9 +95,7 @@ while True:
         xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
         xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro
     elif msg_type == "GPS_RAW_INT":           # GPS status: fix, sat_num
-        if (fix.value != msg.fix_type) or (sat_num.value != msg.satellites_visible):
-            fix.value, sat_num.value = msg.fix_type, msg.satellites_visible
-            msgID_to_send.extend([127])
+        fix.value, sat_num.value = msg.fix_type, msg.satellites_visible
     elif msg_type == "HEARTBEAT":             # MAV_STATE
         if system_status.value != msg.system_status:
             system_status.value = msg.system_status
@@ -202,7 +200,7 @@ while True:
                         mission_ack.value = msg.type
                         print(mission_ack.value)
                     except: pass
-                    if time.time() - start_time > 30: # is time exceeds 30s, ask gcs to resend
+                    if (time.time() - start_time > 30): # is time exceeds 30s, ask gcs to resend
                         mission_ack.value = 99 # failed, please send again
                         break
                 msgID_to_send.extend([129]) # send out mission_ack packet
@@ -212,21 +210,21 @@ while True:
             current_alt, current_lon = lat.value, lon.value
             pkt[received_msgID].unpackpkt(data)
         
-        elif received_msgID == 134:
+        elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)
-            msgID_to_send.extend([130])
+            msgID_to_send.extend([130]) # send out v2g regarding neighboring info
     except:
         pass
 
     '''need to set a safety regarding the rc input to prevent mode/arm conflict, RC_CHANNELS... or RC_CHANNELS_RAW'''
-    if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value):
+    if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value): # change mode
         master.set_mode(pkt[133].mode_arm)
-    elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed:
+    elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed: # arm
         master.arducopter_arm()
         # master.motors_armed_wait()
-    elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed:
+    elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed: # disarm
         master.arducopter_disarm()
-    elif (pkt[133].mode_arm == 12) and (master.flightmode == 'GUIDED'):
+    elif (pkt[133].mode_arm == 12):
         takeoff_alt = 20
         master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
             current_alt, current_lon, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))

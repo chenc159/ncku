@@ -1,3 +1,4 @@
+from socket import timeout
 import time, math
 from datetime import datetime
 from struct import *
@@ -6,6 +7,7 @@ import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
 from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134
+
 
 # Connect pixhawk
 master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
@@ -40,21 +42,27 @@ Dyn_waypt_lat, Dyn_waypt_lon = c_int(0), c_int(0)
 
 others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
-others_vx, others_vy, others_vz, others_hdg = c_int(0), c_int(0), c_int(0), c_int(0)
+others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)
 
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe, fix, sat_num),
     128: packet128(sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
     129: packet129(sysID, compID, commID, mission_ack),
-    130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg),
+    130: packet130(others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
     131: packet131(),
     132: packet132(),
     133: packet133(),
-    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg)
+    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time)
 }
 
 
 last_sent_time, msgID_to_send = 0, [] 
 seq_togo = 0
+
+msg = None
+while msg == None
+    print("waiting for RAW_IMU...")
+    msg = master.recv_match(type=['RAW_IMU'],blocking=True, timeout=1)
+print("RAW_IMU received")
 
 while True:
     try:
@@ -76,18 +84,20 @@ while True:
     elif msg_type == "SYSTEM_TIME":             # gps utc time
         gpstime = datetime.utcfromtimestamp(msg.time_unix_usec/1e6)
         gps_time.value = int((gpstime.minute*60 + gpstime.second)*1e3 + round(gpstime.microsecond/1e3))
-    elif msg_type == "ATTITUDE":              # imu: time, roll, pitch, yaw
+    elif msg_type == "ATTITUDE":              # imu: roll, pitch, yaw angle
         roll.value = round(msg.roll*57.2958)
         pitch.value = round(msg.pitch*57.2958)
         yaw.value = round(msg.yaw*57.2958)
-    elif msg_type == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
-        fix.value, sat_num.value = msg.fix_type, msg.satellites_visible
     elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
         lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.alt
         vx.value, vy.value, vz.value, hdg.value = msg.vx, msg.vy, msg.vz, msg.hdg
-    elif msg_type == "SCALED_IMU2":
+    elif msg_type == "SCALED_IMU2":           # imu: linear acceleration and angular velocity
         xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
         xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro
+    elif msg_type == "GPS_RAW_INT":           # GPS status: fix, sat_num
+        if (fix.value != msg.fix_type) or (sat_num.value != msg.satellites_visible):
+            fix.value, sat_num.value = msg.fix_type, msg.satellites_visible
+            msgID_to_send.extend([127])
     elif msg_type == "HEARTBEAT":             # MAV_STATE
         if system_status.value != msg.system_status:
             system_status.value = msg.system_status
@@ -122,9 +132,12 @@ while True:
         chks.accumulate(pkt_bytearray[:]) 
         pkt_bytearray.extend(pack('H', chks.crc))
         # send by xbee
-        try: xbee001.send_data(remote002,pkt_bytearray)
-        # try: xbee001.send_data_broadcast(pkt_bytearray[i])
-        except: pass
+        if i == 130:
+            try: xbee001.send_data_broadcast(pkt_bytearray)
+            except: pass
+        else:
+            try: xbee001.send_data(remote002,pkt_bytearray)
+            except: pass
         # print(i, pkt_bytearray)
     msgID_to_send = []
 
@@ -158,7 +171,8 @@ while True:
             print('system: ',unpack('i',data[30:34])[0])
             print("!!!!", pkt[received_msgID].Mission_alt)
 
-            if (999 not in pkt[received_msgID].Mission_alt):
+            # https://hamishwillee.gitbooks.io/ham_mavdevguide/content/en/services/mission.html
+            if (999 not in pkt[received_msgID].Mission_alt): # if all mission waypts are received
                 wp = mavwp.MAVWPLoader()
                 print(data)
                 frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
@@ -173,12 +187,12 @@ while True:
                 master.waypoint_clear_all_send()
                 master.waypoint_count_send(wp.count())
                 print(wp.count())
-                # for i in range(wp.count()):
                 mission_ack.value = 255
+                start_time = time.time()
                 while (mission_ack.value == 255):
-                    msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True, timeout=1)
-                    if msg == 'None':
-                        print('is none')
+                    msg = master.recv_match(type=['MISSION_REQUEST'], blocking=True, timeout=1)
+                    if msg == None:
+                        print('MISSION_REQUEST msg is none')
                         continue
                     print(msg)
                     print(wp.wp(msg.seq))
@@ -187,20 +201,24 @@ while True:
                     try: 
                         mission_ack.value = msg.type
                         print(mission_ack.value)
-                        msgID_to_send.extend([129])
                     except: pass
-
+                    if time.time() - start_time > 30: # is time exceeds 30s, ask gcs to resend
+                        mission_ack.value = 99 # failed, please send again
+                        break
+                msgID_to_send.extend([129]) # send out mission_ack packet
                 
         elif received_msgID == 133:
             print(data[5], data)
+            current_alt, current_lon = lat.value, lon.value
             pkt[received_msgID].unpackpkt(data)
         
         elif received_msgID == 134:
-            others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value = pkt[received_msgID].unpackpkt(data)
+            others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)
             msgID_to_send.extend([130])
     except:
         pass
 
+    '''need to set a safety regarding the rc input to prevent mode/arm conflict, RC_CHANNELS... or RC_CHANNELS_RAW'''
     if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value):
         master.set_mode(pkt[133].mode_arm)
     elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed:
@@ -208,6 +226,11 @@ while True:
         # master.motors_armed_wait()
     elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed:
         master.arducopter_disarm()
+    elif (pkt[133].mode_arm == 12) and (master.flightmode == 'GUIDED'):
+        takeoff_alt = 20
+        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
+            current_alt, current_lon, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+        pass
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):

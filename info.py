@@ -247,7 +247,7 @@ class packet129(object):
                      self.mission_ack.value)
 
 class packet130(object):
-    def __init__(self, others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg):
+    def __init__(self, others_sysID, others_compID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time):
         # int
         self.msgID = 130
         # c_int
@@ -261,12 +261,13 @@ class packet130(object):
         self.others_vy = others_vy
         self.others_vz = others_vz
         self.others_hdg = others_hdg
-        # self.others_gps_time = 
+        self.others_gps_time = others_gps_time
 
     def packpkt(self):
-        return pack('<BBBBiiiiiii', self.msgID, self.others_sysID.value, self.others_compID.value, self.others_commID.value,
+        return pack('<BBBBiiiiiiii', self.msgID, self.others_sysID.value, self.others_compID.value, self.others_commID.value,
                      self.others_lat.value, self.others_lon.value, self.others_alt.value, 
-                     self.others_vx.value, self.others_vy.value, self.others_vz.value, self.others_hdg.value)
+                     self.others_vx.value, self.others_vy.value, self.others_vz.value, 
+                     self.others_hdg.value, self.others_gps_time.value)
 
 '''GCS 2 UAV'''
 class packet131(object):
@@ -328,7 +329,7 @@ class packet133(object):
 
 '''UAV 2 UAV'''
 class packet134(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time):
         # int
         self.msgID = 134
         self.sysID = sysID
@@ -347,12 +348,13 @@ class packet134(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.gps_time = gps_time
 
     def packpkt(self):
-        return pack('<BBBBiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+        return pack('<BBBBiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.lat.value, self.lon.value, self.alt.value, self.vx.value, self.vy.value, self.vz.value,
                     self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
-                    self.hdg.value)
+                    self.hdg.value, self.gps_time.value)
     
     def unpackpkt(self, data):
         self.others_sysID = data[2]
@@ -370,4 +372,5 @@ class packet134(object):
         self.others_ygyro = unpack('i',data[41:45])[0]
         self.others_zgyro = unpack('i',data[45:49])[0]
         self.others_hdg = unpack('i',data[49:51])[0]
-        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg
+        self.others_gps_time = unpack('i',data[51:55])[0]
+        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_gps_time

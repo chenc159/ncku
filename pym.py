@@ -66,7 +66,7 @@ while True:
             current_mission_seq = msg.seq
         elif msg_type == "MISSION_ACK":
             print(msg.type)
-        # print("\n", msg)
+        print("\n", msg)
         # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
         # print('rpy: ', roll, pitch, yaw)
@@ -91,7 +91,7 @@ while True:
 
     t += 1
     if ctrl and (t%100 == 0):
-        command = input("0 to 9 to set mode, 10 to arm, 11 to disarm, 12 to do sth with mission: ")
+        command = input("0 to 9 to set mode, 10 to arm, 11 to disarm, 12 to do sth with mission, 13 to takeoff...: ")
         try:
             if int(command) < 10:
                 master.set_mode(int(command))
@@ -115,24 +115,32 @@ while True:
                         24+i*0.1, 121+i*0.1, 3))
                 master.waypoint_clear_all_send()                                     
                 master.waypoint_count_send(int(mission_num))
-                # ack = 99
-                # while ack==99:
-                #     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
-                #     print(msg)
-                #     master.mav.send(wp.wp(msg.seq))
-                #     msg = master.recv_match(type=['MISSION_ACK'],blocking=True,timeout=0.1)
-                #     try: ack = msg.type
-                #     except: pass
-                # print(ack)
-
-                for i in range(int(mission_num)):
+                ack = 99
+                while ack == 99:
                     msg = master.recv_match(type=['MISSION_REQUEST'],blocking=True)
                     print(msg)
                     master.mav.send(wp.wp(msg.seq))
-                    print(wp.wp(msg.seq))
-                
-                # c = input('waiting...')
-                # mission_ack = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
-                # print("mission result: ", mission_ack) 
+                    # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+                    msg = master.recv_match(type=['MISSION_ACK'],blocking=True,timeout=0.1)
+                    try: ack = msg.type
+                    except: pass
+                print("mission result: ", ack) 
+                print(ack)
+
+            elif int(command) == 13:
+                takeoff_alt = 20
+                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
+                    24, 121, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                # master.mav.command_long_send(0, 0, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+                #                                0, 0, 0, 0, 0, 0, 0, takeoff_alt)
+                                               
+                msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
+                print(msg)
+                input()
+
+                print('takeoff command sent!!')
+
+            
         except: pass
+
 

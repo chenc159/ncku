@@ -3,6 +3,7 @@ import time, math
 from datetime import datetime
 from struct import *
 from ctypes import *
+import threading
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
@@ -58,11 +59,12 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
 last_sent_time, msgID_to_send = 0, [] 
 seq_togo = 0
 
-msg = None
-while msg == None:
-    print("waiting for RAW_IMU...")
-    msg = master.recv_match(type=['RAW_IMU'],blocking=True, timeout=1)
-print("RAW_IMU received")
+# msg = None
+# while msg == None:
+#     print("waiting for RAW_IMU...")
+#     try: msg = master.recv_match(type=['RAW_IMU'], blocking=True, timeout=1)
+#     except: pass
+# print("RAW_IMU received")
 
 while True:
     try:
@@ -77,41 +79,45 @@ while True:
         msgID_to_send.extend([127])
 
     # Get data from pixhawk via pymavlink
-    msg = master.recv_match(blocking=True)
-    msg_type = msg.get_type()
-    if msg == None:
-        continue
-    elif msg_type == "SYSTEM_TIME":             # gps utc time
-        gpstime = datetime.utcfromtimestamp(msg.time_unix_usec/1e6)
-        gps_time.value = int((gpstime.minute*60 + gpstime.second)*1e3 + round(gpstime.microsecond/1e3))
-    elif msg_type == "ATTITUDE":              # imu: roll, pitch, yaw angle
-        roll.value = round(msg.roll*57.2958)
-        pitch.value = round(msg.pitch*57.2958)
-        yaw.value = round(msg.yaw*57.2958)
-    elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
-        lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.relative_alt
-        vx.value, vy.value, vz.value, hdg.value = msg.vx, msg.vy, msg.vz, msg.hdg
-    elif msg_type == "SCALED_IMU2":           # imu: linear acceleration and angular velocity
-        xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
-        xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro
-    elif msg_type == "GPS_RAW_INT":           # GPS status: fix, sat_num
-        fix.value, sat_num.value = msg.fix_type, msg.satellites_visible
-    elif msg_type == "HEARTBEAT":             # MAV_STATE
-        if system_status.value != msg.system_status:
-            system_status.value = msg.system_status
-            msgID_to_send.extend([127])
-    elif msg_type == "HIGH_LATENCY2": # https://mavlink.io/en/messages/common.html#HL_FAILURE_FLAG
-        if failsafe.value != int(math.log(msg.HL_FAILURE_FLAG,2)):
-            failsafe.value = int(math.log(msg.HL_FAILURE_FLAG,2))
-            msgID_to_send.extend([127])
-    elif msg_type == "STATUSTEXT":
-        if msg.severity < 4 and (failsafe.value != msg.severity+14): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
-            failsafe.value = msg.severity+14
-            msgID_to_send.extend([127])
-    # elif msg_type == "MISSION_ACK":
-    #     mission_ack.value = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
-    #     msgID_to_send.extend([129])
-        # print('ack: ', mission_ack.value) 
+    try:
+        msg = master.recv_match(blocking=True, timeout=1)
+        msg_type = msg.get_type()
+        if msg == None:
+            continue
+        elif msg_type == "SYSTEM_TIME":             # gps utc time
+            gpstime = datetime.utcfromtimestamp(msg.time_unix_usec/1e6)
+            gps_time.value = int((gpstime.minute*60 + gpstime.second)*1e3 + round(gpstime.microsecond/1e3))
+        elif msg_type == "ATTITUDE":              # imu: roll, pitch, yaw angle
+            roll.value = round(msg.roll*57.2958)
+            pitch.value = round(msg.pitch*57.2958)
+            yaw.value = round(msg.yaw*57.2958)
+        elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
+            lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.relative_alt
+            vx.value, vy.value, vz.value, hdg.value = msg.vx, msg.vy, msg.vz, msg.hdg
+        elif msg_type == "SCALED_IMU2":           # imu: linear acceleration and angular velocity
+            xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
+            xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro
+        elif msg_type == "GPS_RAW_INT":           # GPS status: fix, sat_num
+            fix.value, sat_num.value = msg.fix_type, msg.satellites_visible
+        elif msg_type == "HEARTBEAT":             # MAV_STATE
+            if system_status.value != msg.system_status:
+                system_status.value = msg.system_status
+                msgID_to_send.extend([127])
+        elif msg_type == "HIGH_LATENCY2": # https://mavlink.io/en/messages/common.html#HL_FAILURE_FLAG
+            if failsafe.value != int(math.log(msg.HL_FAILURE_FLAG,2)):
+                failsafe.value = int(math.log(msg.HL_FAILURE_FLAG,2))
+                msgID_to_send.extend([127])
+        elif msg_type == "STATUSTEXT":
+            if msg.severity < 4 and (failsafe.value != msg.severity+14): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+                failsafe.value = msg.severity+14
+                msgID_to_send.extend([127])
+        # elif msg_type == "MISSION_ACK":
+        #     mission_ack.value = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+        #     msgID_to_send.extend([129])
+            # print('ack: ', mission_ack.value) 
+        elif msg_type == "COMMAND_ACK":
+            result = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
+    except: pass
 
     if (time.time() - last_sent_time) >= 1.0:
         msgID_to_send.extend([128])
@@ -213,22 +219,36 @@ while True:
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
-    except:
-        pass
+    except: pass
 
-    '''need to set a safety regarding the rc input to prevent mode/arm conflict, RC_CHANNELS... or RC_CHANNELS_RAW'''
-    if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value): # change mode
-        master.set_mode(pkt[133].mode_arm)
-    elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed: # arm
-        master.arducopter_arm()
-        # master.motors_armed_wait()
-    elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed: # disarm
-        master.arducopter_disarm()
-    elif (pkt[133].mode_arm == 12):
-        takeoff_alt = 20
-        master.set_mode(4)
-        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
-            current_alt, current_lon, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+    if (time.time() - pkt[133].time < 3.0):
+        if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value): # change mode
+            t4 = threading.Thread(master.set_mode(pkt[133].mode_arm))
+            t4.start()
+            # master.set_mode(pkt[133].mode_arm)
+        elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed: # arm
+            t5 = threading.Thread(master.arducopter_arm())
+            t5.start()
+            # master.motors_armed_wait()
+        elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed: # disarm
+            t6 = threading.Thread(master.arducopter_disarm())
+            t6.start()
+        elif (pkt[133].mode_arm == 12): # takeoff
+            takeoff_alt = 20
+            t7 = threading.Thread(master.set_mode(4)) # guided
+            t7.start()
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
+                current_alt, current_lon, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+            # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, takeoff_alt)
+                # mission start (0,0) and command_long, MAV_CMD_NAV_WAYPOINT
+                                               
+            # msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
+        
+        elif (pkt[133].mode_arm == 13): # mission start
+            t8 = threading.Thread(master.set_mode(3)) # auto
+            t8.start()
+            master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, 0, 0, 0, 0, 0, 0, 0, 0)
+            
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
@@ -237,6 +257,10 @@ while True:
             seq_togo += 1
         master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
             pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo], 0, 0, 0, 0, 0, 0, 0, 0))
+        # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
+        #     pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo])
+        # msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
+            
         Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo]
 
 

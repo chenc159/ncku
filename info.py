@@ -3,6 +3,7 @@ from pymavlink import mavutil
 from datetime import datetime
 from ctypes import *
 from struct import *
+import time
 
 
 class info:
@@ -325,8 +326,10 @@ class packet132(object):
 class packet133(object):
     def __init__(self):
         self.mode_arm = 255
+        self.time = 0
     def unpackpkt(self, data):
         self.mode_arm = int(data[5])
+        self.time = time.time()
 
 '''UAV 2 UAV'''
 class packet134(object):

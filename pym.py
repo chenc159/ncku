@@ -66,15 +66,15 @@ while True:
             current_mission_seq = msg.seq
         elif msg_type == "MISSION_ACK":
             print(msg.type)
-        print("\n", msg)
+        # print("\n", msg)
         # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
         # print('rpy: ', roll, pitch, yaw)
         # print('gps: ', fix, num, lat, lon, alt)
         # print('v/hdg: ', vx, vy, vz, heading)
         # print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
-        # print('mode: ', master.flightmode)
-        # print('armed: ', master.sysid_state[master.sysid].armed)
+        print('mode: ', master.flightmode)
+        print('armed: ', master.sysid_state[master.sysid].armed)
         # print(master.start_time, master.uptime)
         # print(time.localtime(master.start_time))
     elif (method == 2): # A more advanced method
@@ -129,10 +129,12 @@ while True:
 
             elif int(command) == 13:
                 takeoff_alt = 20
+                master.set_mode(int(4))
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
                     24, 121, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
                 # master.mav.command_long_send(0, 0, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
                 #                                0, 0, 0, 0, 0, 0, 0, takeoff_alt)
+                # mission start (0,0) and command_long, MAV_CMD_NAV_WAYPOINT
                                                
                 msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
                 print(msg)

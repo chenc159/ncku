@@ -235,18 +235,19 @@ class packet128(object):
                     self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.gps_time.value)
 
 class packet129(object):
-    def __init__(self, sysID, compID, commID, mission_ack):
+    def __init__(self, sysID, compID, commID, command, result):
         # int
         self.msgID = 129
         self.sysID = sysID
         self.compID = compID
         self.commID = commID
         # c_int
-        self.mission_ack = mission_ack
+        self.command = command
+        self.result = result
 
     def packpkt(self):
-        return pack('<BBBBB', self.msgID, self.sysID, self.compID, self.commID,
-                     self.mission_ack.value)
+        return pack('<BBBBBB', self.msgID, self.sysID, self.compID, self.commID,
+                     self.command.value, self.result.value)
 
 class packet130(object):
     def __init__(self, sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time):

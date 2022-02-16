@@ -65,7 +65,15 @@ while True:
         elif msg_type == "MISSION_CURRENT":
             current_mission_seq = msg.seq
         elif msg_type == "MISSION_ACK":
-            print(msg.type)
+            print(msg.type) # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+        elif msg_type == "COMMAND_ACK":
+            result = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
+            print(msg)
+            # print('mode: ', master.flightmode)
+        elif msg_type == "SERVO_OUTPUT_RAW":
+            # print(msg)
+            pass
+
         # print("\n", msg)
         # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
@@ -74,7 +82,7 @@ while True:
         # print('v/hdg: ', vx, vy, vz, heading)
         # print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
         print('mode: ', master.flightmode)
-        print('armed: ', master.sysid_state[master.sysid].armed)
+        # print('armed: ', master.sysid_state[master.sysid].armed)
         # print(master.start_time, master.uptime)
         # print(time.localtime(master.start_time))
     elif (method == 2): # A more advanced method

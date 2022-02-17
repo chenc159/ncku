@@ -2,11 +2,11 @@
 This file gets the information of the drone by using pymavlink.
 '''
 
-from socket import timeout
 from pymavlink import mavutil, mavwp
 import time
 from datetime import datetime
 from info import info
+from serial.serialutil import SerialException
 
 
 # Start a connection
@@ -48,10 +48,11 @@ while True:
         arm = master.sysid_state[master.sysid].armed
         print(arm)
     # Get data from pixhawk via pymavlink
+    msg = None
     try: 
         msg = master.recv_match(blocking=True)
         msg_type = msg.get_type()
-    except: pass
+    except SerialException: pass
     if (method == 1):  # A simple method
         if msg == None:
             continue
@@ -62,7 +63,7 @@ while True:
         elif msg_type == "GPS_RAW_INT":           # GPS status: time_usec/boot, fix, sat_num
             GPS_time_usec, fix, num = msg.time_usec, msg.fix_type, msg.satellites_visible
         elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
-            GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat, msg.lon, msg.alt # originally in degE7 and mm
+            GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat, msg.lon, msg.relative_alt # originally in degE7 and mm
             vx, vy, vz, heading = msg.vx, msg.vy, msg.vz, msg.hdg # originally in cm/s and cdeg    
         elif msg_type == "HEARTBEAT":             # MAV_STATE
             MAV_state = msg.system_status
@@ -77,11 +78,11 @@ while True:
         elif msg_type == "MISSION_CURRENT":
             current_mission_seq = msg.seq
         elif msg_type == "MISSION_ACK":
-            print(msg.type) # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+            print("MISSION_ACK: ", msg.type) # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
         elif msg_type == "COMMAND_ACK": # https://mavlink.io/en/messages/common.html#MAV_RESULT
             if (command != msg.command) or (result != msg.result):
                 command, result = msg.command, msg.result
-            print(command, result)
+            print("COMMAND_ACK: ", command, result)
         elif msg_type == "SERVO_OUTPUT_RAW":
             # print(msg)
             pass

@@ -4,6 +4,7 @@ from datetime import datetime
 from struct import *
 from ctypes import *
 import threading
+from serial.serialutil import SerialException
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
@@ -89,10 +90,11 @@ while True:
         msgID_to_send.extend([127])
 
     # Get data from pixhawk via pymavlink
-    # msg = None
-    msg = master.recv_match(blocking=True, timeout=1)
-    try: msg_type = msg.get_type()
-    except: pass
+    msg = None
+    try:
+        msg = master.recv_match(blocking=True, timeout=1)
+        msg_type = msg.get_type()
+    except SerialException: pass
     if msg == None:
         continue
     elif msg_type == "SYSTEM_TIME":             # gps utc time

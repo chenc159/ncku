@@ -15,13 +15,13 @@ master = mavutil.mavlink_connection('/dev/ttyACM0')
 master.wait_heartbeat()
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
 # Initialize data stream
-rate = 4 # desired transmission rate
+rate = 2 # desired transmission rate
 master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
 # For checksum calculation
 cs = mavutil.x25crc()
 
 method = 1 # 1 or 3 to choose the methos to use
-ctrl, t = True, 0  # if to send/receive control command from key input
+ctrl, last_ask_time = False, 0  # if to send/receive control command from key input
 
 convert = info.convert
 msgs =  info.msgs
@@ -34,12 +34,24 @@ roll, pitch, yaw = 0, 0, 0                                              # in deg
 fix, num, lat, lon, alt = 0, 0, 0, 0, 0                                 # in degE7 and mm
 vx, vy, vz, heading = 0, 0, 0, 0                                        # in cm/s and cdeg
 MAV_state, battery, failsafe = 0, 0, 99                                 # int, num in %, bool
+mode, arm = 0, 0
+command, result = 0, 0
+
 
 
 while True:
+
+    if mode != master.flightmode:
+        mode = master.flightmode
+        print(mode)
+    if arm != master.sysid_state[master.sysid].armed:
+        arm = master.sysid_state[master.sysid].armed
+        print(arm)
     # Get data from pixhawk via pymavlink
-    msg = master.recv_match(blocking=True)
-    msg_type = msg.get_type()
+    try: 
+        msg = master.recv_match(blocking=True)
+        msg_type = msg.get_type()
+    except: pass
     if (method == 1):  # A simple method
         if msg == None:
             continue
@@ -66,25 +78,26 @@ while True:
             current_mission_seq = msg.seq
         elif msg_type == "MISSION_ACK":
             print(msg.type) # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
-        elif msg_type == "COMMAND_ACK":
-            result = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
-            print(msg)
-            # print('mode: ', master.flightmode)
+        elif msg_type == "COMMAND_ACK": # https://mavlink.io/en/messages/common.html#MAV_RESULT
+            if (command != msg.command) or (result != msg.result):
+                command, result = msg.command, msg.result
+            print(command, result)
         elif msg_type == "SERVO_OUTPUT_RAW":
             # print(msg)
             pass
 
-        # print("\n", msg)
+        print("\n", msg)
         # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
         # print('rpy: ', roll, pitch, yaw)
         # print('gps: ', fix, num, lat, lon, alt)
         # print('v/hdg: ', vx, vy, vz, heading)
         # print('state, bat, fs: ', info.system_status(MAV_state), battery, failsafe)
-        print('mode: ', master.flightmode)
+        # print('mode: ', master.flightmode)
         # print('armed: ', master.sysid_state[master.sysid].armed)
         # print(master.start_time, master.uptime)
         # print(time.localtime(master.start_time))
+
     elif (method == 2): # A more advanced method
         if msg_type not in msgs.keys():
             continue
@@ -97,19 +110,18 @@ while True:
         print('armed: ', master.sysid_state[master.sysid].armed)
         print(msgs)
 
-    t += 1
-    if ctrl and (t%100 == 0):
-        command = input("0 to 9 to set mode, 10 to arm, 11 to disarm, 12 to do sth with mission, 13 to takeoff...: ")
+    if ctrl and (time.time() - last_ask_time > 3):
+        input_command = input("0 to 9 to set mode, 10 to arm, 11 to disarm, 12 to do sth with mission, 13 to takeoff, 14 to mission start...: ")
         try:
-            if int(command) < 10:
-                master.set_mode(int(command))
-            elif int(command) == 10:
+            if int(input_command) < 10:
+                master.set_mode(int(input_command))
+            elif int(input_command) == 10:
                 master.arducopter_arm()
                 # master.motors_armed_wait()
-            elif int(command) == 11:
+            elif int(input_command) == 11:
                 master.arducopter_disarm()
                 # master.motors_disarmed_wait()
-            elif int(command) == 12:
+            elif int(input_command) == 12:
                 mission_num = input("Input mission number: ")
                 wp = mavwp.MAVWPLoader()                                                    
                 frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
@@ -133,24 +145,33 @@ while True:
                     try: ack = msg.type
                     except: pass
                 print("mission result: ", ack) 
-                print(ack)
 
-            elif int(command) == 13:
+            elif int(input_command) == 13:
                 takeoff_alt = 20
-                master.set_mode(int(4))
-                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
-                    24, 121, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
-                # master.mav.command_long_send(0, 0, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
-                #                                0, 0, 0, 0, 0, 0, 0, takeoff_alt)
-                # mission start (0,0) and command_long, MAV_CMD_NAV_WAYPOINT
-                                               
-                msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
-                print(msg)
-                input()
-
+                # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
+                #     24, 121, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+                                               0, 0, 0, 0, 0, 0, 0, takeoff_alt)
+                send_mav_command = True
                 print('takeoff command sent!!')
-
             
+            elif int(input_command) == 14:
+                master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, 0, 0, 0, 0, 0, 0, 0, 0)
+                send_mav_command = True
+                print('mission start!')
+
         except: pass
+        last_ask_time = time.time()
+    
+    if (command == 22) and (result == 0) and send_mav_command:
+        master.set_mode(4)
+        send_mav_command = False
+        print('set guided for takeoff')
+    
+    if (command == 300) and (result == 0) and send_mav_command:
+        master.set_mode(3)
+        send_mav_command = False
+        print('set auto for mission start')    
+
 
 

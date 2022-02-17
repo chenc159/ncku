@@ -13,15 +13,16 @@ from info import info, packet127, packet128, packet129, packet130, packet131, pa
 # Connect pixhawk
 master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
 # master = mavutil.mavlink_connection('/dev/ttyACM0', baud = 57600)
+
 msg = None
 while msg == None:
-    print("waiting for Heartbeat and RAW_IMU...")
+    print("waiting for the first Heartbeat ...")
     try: 
-        master.wait_heartbeat() # Wait for the first heartbeat 
-        msg = master.recv_match(type=['RAW_IMU'], blocking=True, timeout=1)
+        # master.wait_heartbeat() # Wait for the first heartbeat 
+        msg = master.recv_match(type=['HEARTBEAT'], blocking=True, timeout=1)
     except: pass
-print("RAW_IMU received")
 print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
+
 # Initialize data stream
 rate = 2 # desired transmission rate
 master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
@@ -68,6 +69,13 @@ seq_togo = 0
 send_mav_command = False
 confirmation = 0
 
+msg = None
+while msg == None:
+    print("waiting for RAW_IMU ...")
+    try: msg = master.recv_match(type=['RAW_IMU'], blocking=True, timeout=1)
+    except: pass
+print("RAW_IMU received")
+
 while True:
     try:
         if mode.value !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
@@ -81,10 +89,9 @@ while True:
         msgID_to_send.extend([127])
 
     # Get data from pixhawk via pymavlink
-    msg = None
-    try:
-        msg = master.recv_match(blocking=True, timeout=1)
-        msg_type = msg.get_type()
+    # msg = None
+    msg = master.recv_match(blocking=True, timeout=1)
+    try: msg_type = msg.get_type()
     except: pass
     if msg == None:
         continue

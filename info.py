@@ -246,7 +246,7 @@ class packet129(object):
         self.result = result
 
     def packpkt(self):
-        return pack('<BBBBBB', self.msgID, self.sysID, self.compID, self.commID,
+        return pack('<BBBBii', self.msgID, self.sysID, self.compID, self.commID,
                      self.command.value, self.result.value)
 
 class packet130(object):

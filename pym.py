@@ -21,7 +21,7 @@ master.mav.request_data_stream_send(master.target_system, master.target_componen
 cs = mavutil.x25crc()
 
 method = 1 # 1 or 3 to choose the methos to use
-ctrl, last_ask_time = False, 0  # if to send/receive control command from key input
+ctrl, last_ask_time = True, 0  # if to send/receive control command from key input
 
 convert = info.convert
 msgs =  info.msgs
@@ -36,6 +36,24 @@ vx, vy, vz, heading = 0, 0, 0, 0                                        # in cm/
 MAV_state, battery, failsafe = 0, 0, 99                                 # int, num in %, bool
 mode, arm = 0, 0
 command, result = 0, 0
+
+# get already loaded mission
+master.waypoint_request_list_send()
+msg = None
+while not msg:
+    print('Waiting for mission count...')
+    msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
+print(msg.count)
+count, seq = msg.count, 0
+while (seq < count):
+    master.waypoint_request_send(seq)
+    msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
+    if not msg:
+        print('MISSION_ITEM is none ...')
+        continue
+    seq = msg.seq + 1
+    print(msg.seq, msg.command, msg.x, msg.y, msg.z)
+
 
 
 
@@ -53,6 +71,7 @@ while True:
         msg = master.recv_match(blocking=True)
         msg_type = msg.get_type()
     except SerialException: pass
+    
     if (method == 1):  # A simple method
         if msg == None:
             continue
@@ -87,7 +106,7 @@ while True:
             # print(msg)
             pass
 
-        print("\n", msg)
+        # print("\n", msg)
         # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
         # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
         # print('rpy: ', roll, pitch, yaw)
@@ -112,7 +131,7 @@ while True:
         print(msgs)
 
     if ctrl and (time.time() - last_ask_time > 3):
-        input_command = input("0 to 9 to set mode, 10 to arm, 11 to disarm, 12 to do sth with mission, 13 to takeoff, 14 to mission start...: ")
+        input_command = input("0-9: set mode, 10: arm, 11: disarm, 12: mission, 13: takeoff, 14: mission start ...: ")
         try:
             if int(input_command) < 10:
                 master.set_mode(int(input_command))
@@ -131,7 +150,7 @@ while True:
                         sysID, compID,
                         i,
                         frame,
-                        info.mission_mode_mapping[0],
+                        info.mission_mode_mapping[2],
                         0, 0, 0, 0, 0, 0,
                         24+i*0.1, 121+i*0.1, 3))
                 master.waypoint_clear_all_send()                                     
@@ -151,6 +170,10 @@ while True:
                 takeoff_alt = 20
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
                 #     24, 121, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                master.set_mode(4)
+                msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
+                print("takeoff: ", msg.command, msg.result)
+
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
                                                0, 0, 0, 0, 0, 0, 0, takeoff_alt)
                 send_mav_command = True
@@ -164,10 +187,10 @@ while True:
         except: pass
         last_ask_time = time.time()
     
-    if (command == 22) and (result == 0) and send_mav_command:
-        master.set_mode(4)
-        send_mav_command = False
-        print('set guided for takeoff')
+    # if (command == 22) and (result == 0) and send_mav_command:
+    #     master.set_mode(4)
+    #     send_mav_command = False
+    #     print('set guided for takeoff')
     
     if (command == 300) and (result == 0) and send_mav_command:
         master.set_mode(3)

@@ -323,6 +323,13 @@ class packet132(object):
         self.Mission_lat[self.Waypt_seqID] = self.lat
         self.Mission_lon[self.Waypt_seqID] = self.lon
         self.Mission_alt[self.Waypt_seqID] = self.alt
+    def mission_save_input(self, seq, mode, lat, lon, alt):
+        self.Mission_modes[seq] = mode
+        # self.Mission_formation[seq] =self.Formation
+        # self.Mission_accept_radius[seq] = self.Accept_radius
+        self.Mission_lat[seq] = lat
+        self.Mission_lon[seq] = lon
+        self.Mission_alt[seq] = alt
 
 class packet133(object):
     def __init__(self):

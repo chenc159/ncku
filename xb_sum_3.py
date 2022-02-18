@@ -70,12 +70,32 @@ seq_togo = 0
 send_mav_command = False
 confirmation = 0
 
+# get the first info
 msg = None
 while msg == None:
     print("waiting for RAW_IMU ...")
     try: msg = master.recv_match(type=['RAW_IMU'], blocking=True, timeout=1)
     except: pass
 print("RAW_IMU received")
+
+# get already loaded mission
+master.waypoint_request_list_send()
+msg = None
+while not msg:
+    print('Waiting for mission count...')
+    msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
+print('Preloaded mission count: ', msg.count)
+count, seq = msg.count, 0
+pkt[132].mission_init(count)
+while (seq < count):
+    master.waypoint_request_send(seq)
+    msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
+    if not msg:
+        print('MISSION_ITEM is none ...')
+        continue
+    seq = msg.seq + 1
+    print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
+    pkt[132].mission_save_input(msg.seq, msg.command, msg.x, msg.y, msg.z)
 
 while True:
     try:
@@ -130,7 +150,7 @@ while True:
         # print('ack: ', mission_ack.value) 
     elif msg_type == "MISSION_CURRENT":
         current_mission_seq = msg.seq
-        if (master.flightmode == 'AUTO'):
+        if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > msg.seq):
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[msg.seq], pkt[132].Mission_lon[msg.seq]
     elif msg_type == "COMMAND_ACK":
         command.value = msg.command # 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
@@ -224,14 +244,12 @@ while True:
                     master.mav.send(wp.wp(msg.seq))
                     msg = master.recv_match(type=['MISSION_ACK'], blocking=True, timeout=0.1)
                     try: 
-                        command.value = 999 # self-defined numbmer
-                        result.value = msg.type
+                        command.value, result.value= 999, msg.type # 999 is a self-defined numbmer
                         Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[0], pkt[132].Mission_lon[0]
                         print(result.value)
                     except: pass
                     if (time.time() - start_time > 30): # is time exceeds 30s, ask gcs to resend
-                        command.value = 999
-                        result.value = 99 # failed, please send again
+                        command.value, result.value = 999, 99 # failed, please send again
                         break
                 msgID_to_send.extend([129]) # send out mission_ack packet
                 
@@ -248,24 +266,13 @@ while True:
             elif (pkt[received_msgID].mode_arm == 12): # takeoff
                 takeoff_alt = 20
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, confirmation, 0, 0, 0, 0, 0, 0, takeoff_alt)
-                send_mav_command = True
             elif (pkt[received_msgID].mode_arm == 13): # mission start
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, confirmation, 0, 0, 0, 0, 0, 0, 0)
-                send_mav_command = True
         
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
     except: pass
-
-
-    if (command.value == 22) and (result.value == 0) and (pkt[133].mode_arm == 12) and send_mav_command:
-        master.set_mode(4) # guided
-        send_mav_command = False
-    
-    if (command.value == 300) and (result.value == 0) and (pkt[133].mode_arm == 13) and send_mav_command:
-        master.set_mode(3) # auto
-        send_mav_command = False
 
     '''
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html

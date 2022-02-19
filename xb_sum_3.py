@@ -102,7 +102,7 @@ while True:
         if mode.value !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
             mode.value = list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]
             msgID_to_send.extend([127])
-    except:
+    except: # for some other less seem modes
         mode.value = 99
         msgID_to_send.extend([127])
     if arm.value != master.sysid_state[master.sysid].armed:
@@ -140,8 +140,8 @@ while True:
         if failsafe.value != int(math.log(msg.HL_FAILURE_FLAG,2)):
             failsafe.value = int(math.log(msg.HL_FAILURE_FLAG,2))
             msgID_to_send.extend([127])
-    elif msg_type == "STATUSTEXT":
-        if msg.severity < 4 and (failsafe.value != msg.severity+14): # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+    elif msg_type == "STATUSTEXT": # https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+        if msg.severity < 4 and (failsafe.value != msg.severity+14):
             failsafe.value = msg.severity+14
             msgID_to_send.extend([127])
     # elif msg_type == "MISSION_ACK":
@@ -149,9 +149,9 @@ while True:
     #     msgID_to_send.extend([129])
         # print('ack: ', mission_ack.value) 
     elif msg_type == "MISSION_CURRENT":
-        current_mission_seq = msg.seq
-        if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > msg.seq):
-            Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[msg.seq], pkt[132].Mission_lon[msg.seq]
+        current_mission_seq = int(msg.seq)
+        if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > current_mission_seq):
+            Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[current_mission_seq], pkt[132].Mission_lon[current_mission_seq]
     elif msg_type == "COMMAND_ACK":
         command.value = msg.command # 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
         result.value = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
@@ -192,8 +192,8 @@ while True:
         received = xbee001.read_data()
         data = received.data
         received_msgID = data[1]
-        #print('total_waypoint: ', data)
-        print('received id: ', received_msgID)
+        print('Received id: ', received_msgID)
+        
         if received_msgID == 131:
             pkt[received_msgID].unpackpkt(data)
             pkt[132].mission_init(pkt[received_msgID].Waypt_count)
@@ -202,6 +202,7 @@ while True:
             print('waypt_count: ', data[5])
             print('Desired_dist: ',unpack('i',data[6:10])[0])
             print('system131: ',unpack('i',data[10:14])[0])
+        
         elif received_msgID == 132:
             pkt[received_msgID].unpackpkt(data)
             pkt[received_msgID].mission_save()
@@ -223,11 +224,8 @@ while True:
                 frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
                 for i in range(pkt[131].Waypt_count):
                     wp.add(mavutil.mavlink.MAVLink_mission_item_message(
-                        sysID, compID,
-                        i,
-                        frame,
-                        pkt[received_msgID].Mission_modes[i],
-                        0, 0, pkt[received_msgID].Mission_accept_radius[i], 0, 0, 0,
+                        sysID, compID, i, frame,
+                        pkt[received_msgID].Mission_modes[i], 0, 0, pkt[received_msgID].Mission_accept_radius[i], 0, 0, 0,
                         pkt[received_msgID].Mission_lat[i]/1e7, pkt[received_msgID].Mission_lon[i]/1e7, pkt[received_msgID].Mission_alt[i]))
                 master.waypoint_clear_all_send()
                 master.waypoint_count_send(wp.count())
@@ -271,6 +269,8 @@ while True:
         
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)
+            dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, others_lat.value/1e7, others_lon.value/1e7, others_alt.value)
+            pkt[130].calculated((dx**2 + dy**2)**0.5, hdg.value - others_hdg.value)
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
     except: pass
 

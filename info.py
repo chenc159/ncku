@@ -265,12 +265,18 @@ class packet130(object):
         self.others_vz = others_vz
         self.others_hdg = others_hdg
         self.others_gps_time = others_gps_time
+    
+    def calculated(self, relative_dist, relative_hdg):
+        self.relative_dist = relative_dist
+        self.relative_hdg = relative_hdg
 
     def packpkt(self):
         return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
                      self.others_lat.value, self.others_lon.value, self.others_alt.value, 
                      self.others_vx.value, self.others_vy.value, self.others_vz.value, 
                      self.others_hdg.value, self.others_gps_time.value)
+        # return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
+        #              self.related_dist, self.related_hdg, self.others_gps_time.value)
 
 '''GCS 2 UAV'''
 class packet131(object):

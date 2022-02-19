@@ -43,7 +43,7 @@ msg = None
 while not msg:
     print('Waiting for mission count...')
     msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
-print(msg.count)
+print('Preloaded mission count: ', msg.count)
 count, seq = msg.count, 0
 while (seq < count):
     master.waypoint_request_send(seq)
@@ -52,9 +52,7 @@ while (seq < count):
         print('MISSION_ITEM is none ...')
         continue
     seq = msg.seq + 1
-    print(msg.seq, msg.command, msg.x, msg.y, msg.z)
-
-
+    print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
 
 
 while True:

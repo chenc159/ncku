@@ -95,7 +95,7 @@ while (seq < count):
         continue
     seq = msg.seq + 1
     print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
-    pkt[132].mission_save_input(msg.seq, msg.command, msg.x, msg.y, msg.z)
+    pkt[132].mission_save_input(msg.seq, msg.command, int(msg.x*1e7), int(msg.y*1e7), int(msg.z))
 
 while True:
     try:
@@ -149,15 +149,21 @@ while True:
     #     msgID_to_send.extend([129])
         # print('ack: ', mission_ack.value) 
     elif msg_type == "MISSION_CURRENT":
-        print(msg.seq)
+        # print(msg.seq)
         current_mission_seq = int(msg.seq)
-        if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > current_mission_seq):
-            Dyn_waypt_lat.value = pkt[132].Mission_lat[current_mission_seq] 
-            Dyn_waypt_lon.value = pkt[132].Mission_lon[current_mission_seq]
+        # if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > current_mission_seq):
+        #     Dyn_waypt_lat.value = pkt[132].Mission_lat[current_mission_seq] 
+        #     Dyn_waypt_lon.value = pkt[132].Mission_lon[current_mission_seq]
     elif msg_type == "COMMAND_ACK":
         print(msg.command, msg.result)
         command.value = msg.command # 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
         result.value = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
+        if (command.value == 22) and (result.value != 0):
+            confirmation += 1
+        else: confirmation = 0
+        if (command.value == 300) and (result.value != 0):
+            confirmation += 1
+        else: confirmation = 0
         msgID_to_send.extend([129])
     elif msg_type == "SERVO_OUTPUT_RAW":
         # print(msg)
@@ -266,15 +272,16 @@ while True:
             elif (pkt[received_msgID].mode_arm == 11): # disarm
                 master.arducopter_disarm()
             elif (pkt[received_msgID].mode_arm == 12): # takeoff
-                takeoff_alt = 20
+                takeoff_alt = 5
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, confirmation, 0, 0, 0, 0, 0, 0, takeoff_alt)
             elif (pkt[received_msgID].mode_arm == 13): # mission start
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, confirmation, 0, 0, 0, 0, 0, 0, 0)
             elif (pkt[received_msgID].mode_arm == 14): # mission with guided mode
                 seq_togo = 0
-                master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
-                pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo])
-                mission_guided = True
+                if (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
+                    master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
+                        pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo])
+                    mission_guided = True
         
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)

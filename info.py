@@ -276,7 +276,7 @@ class packet130(object):
                      self.others_vx.value, self.others_vy.value, self.others_vz.value, 
                      self.others_hdg.value, self.others_gps_time.value)
         # return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
-        #              self.related_dist, self.related_hdg, self.others_gps_time.value)
+        #              self.relative_dist, self.relative_hdg, self.others_gps_time.value)
 
 '''GCS 2 UAV'''
 class packet131(object):

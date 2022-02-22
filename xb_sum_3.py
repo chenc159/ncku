@@ -76,6 +76,7 @@ while msg == None:
     print("waiting for RAW_IMU ...")
     try: msg = master.recv_match(type=['RAW_IMU'], blocking=True, timeout=1)
     except: pass
+    time.sleep(1)
 print("RAW_IMU received")
 
 # get already loaded mission
@@ -99,8 +100,8 @@ while (seq < count):
 
 while True:
     try:
-        if mode.value != info.mode_map_s2n(master.flightmode):
-            mode.value = info.mode_map_s2n(master.flightmode)
+        if mode.value != info.mode_map_s2n[master.flightmode]:
+            mode.value = info.mode_map_s2n[master.flightmode]
             msgID_to_send.extend([127])
     except: # for some other less seem modes
         mode.value = 99
@@ -267,7 +268,7 @@ while True:
             mission_guided = False
             if (pkt[received_msgID].mode_arm < 10): # disarm
                 input_mode = pkt[received_msgID].mode_arm
-                if input_mode == 8: # convert position mode number
+                if (input_mode == 8): # convert position mode number
                     input_mode = 16
                 master.set_mode(input_mode)
             elif (pkt[received_msgID].mode_arm == 10): # arm
@@ -346,4 +347,11 @@ while True:
 
     set mode 
     gps disable
+
+    saving:
+    mission waypoints, time-position, time-mode, 
+    start recording to memory once armed
+    csv table: time, mode, position, velocity, imu
+    disarm and packet (write) for writing into hardware/sd card
+
     '''

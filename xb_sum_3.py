@@ -67,7 +67,7 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
 
 last_sent_time, msgID_to_send = 0, [] 
 seq_togo = 0
-send_mav_command = False
+mission_guided = False
 confirmation = 0
 
 # get the first info
@@ -99,8 +99,8 @@ while (seq < count):
 
 while True:
     try:
-        if mode.value !=  list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]:
-            mode.value = list(info.mode_mapping_acm.keys())[list(info.mode_mapping_acm.values()).index(master.flightmode)]
+        if mode.value != info.mode_map_s2n(master.flightmode):
+            mode.value = info.mode_map_s2n(master.flightmode)
             msgID_to_send.extend([127])
     except: # for some other less seem modes
         mode.value = 99
@@ -266,7 +266,10 @@ while True:
             current_alt, current_lon = lat.value, lon.value
             mission_guided = False
             if (pkt[received_msgID].mode_arm < 10): # disarm
-                master.set_mode(pkt[received_msgID].mode_arm)
+                input_mode = pkt[received_msgID].mode_arm
+                if input_mode == 8: # convert position mode number
+                    input_mode = 16
+                master.set_mode(input_mode)
             elif (pkt[received_msgID].mode_arm == 10): # arm
                 master.arducopter_arm()
             elif (pkt[received_msgID].mode_arm == 11): # disarm
@@ -340,4 +343,7 @@ while True:
     '''
     gcs: receive command ack every command (arm/disarm/set_mode/takeoff/mission start)
     present command ack in a way that history shows.... can see the previous command ack
+
+    set mode 
+    gps disable
     '''

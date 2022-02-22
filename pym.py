@@ -38,6 +38,7 @@ mode, arm = 0, 0
 command, result = 0, 0
 
 # get already loaded mission
+# master.waypoint_clear_all_send()
 master.waypoint_request_list_send()
 msg = None
 while not msg:
@@ -132,7 +133,11 @@ while True:
         input_command = input("0-9: set mode, 10: arm, 11: disarm, 12: mission, 13: takeoff, 14: mission start ...: ")
         try:
             if int(input_command) < 10:
-                master.set_mode(int(input_command))
+                input_mode = int(input_command)
+                if input_mode == 8: # convert position mode number 
+                    input_mode = 16
+                master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_DO_SET_MODE, 0,
+                                    mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED, input_mode, 0, 0, 0, 0, 0)
             elif int(input_command) == 10:
                 master.arducopter_arm()
                 # master.motors_armed_wait()
@@ -171,29 +176,17 @@ while True:
                 master.set_mode(4)
                 msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
                 print("takeoff: ", msg.command, msg.result)
-
-                master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+                if (msg.result == 0):
+                    master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
                                                0, 0, 0, 0, 0, 0, 0, takeoff_alt)
-                send_mav_command = True
                 print('takeoff command sent!!')
             
             elif int(input_command) == 14:
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, 0, 0, 0, 0, 0, 0, 0, 0)
-                send_mav_command = True
                 print('mission start!')
-
         except: pass
         last_ask_time = time.time()
-    
-    # if (command == 22) and (result == 0) and send_mav_command:
-    #     master.set_mode(4)
-    #     send_mav_command = False
-    #     print('set guided for takeoff')
-    
-    if (command == 300) and (result == 0) and send_mav_command:
-        master.set_mode(3)
-        send_mav_command = False
-        print('set auto for mission start')    
+
 
 
 

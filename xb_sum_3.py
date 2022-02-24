@@ -8,7 +8,7 @@ from serial.serialutil import SerialException
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
-from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136
+from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136, packet137
 
 
 # Connect pixhawk
@@ -49,6 +49,7 @@ fix, sat_num = c_int(0), c_int(0)
 mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
 command, result = c_int(255), c_int(255)
 Dyn_waypt_lat, Dyn_waypt_lon, waypt_id = c_int(0), c_int(0), c_int(255)
+servo1, servo2, servo3, servo4 = c_int(0), c_int(0), c_int(0), c_int(0)
 
 others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
@@ -63,7 +64,8 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     133: packet133(),
     134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time),
     135: packet135(),
-    136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id)
+    136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id),
+    137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4)
 }
 
 
@@ -166,9 +168,8 @@ while True:
         else: confirmation = 0
         msgID_to_send.extend([129])
     elif msg_type == "SERVO_OUTPUT_RAW":
+        servo1, servo2, servo3, servo4 = msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw
         # print(msg)
-        # print(msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw)
-        pass
 
     if (time.time() - last_sent_time) >= 1.0:
         msgID_to_send.extend([128, 134, 136])

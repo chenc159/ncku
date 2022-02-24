@@ -289,6 +289,23 @@ class packet136(object):
         return pack('<BBBBiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.waypt_seq.value)
 
+class packet137(object):
+    def __init__(self, sysID, compID, commID, servo1, servo2, servo3, servo4):
+        # int
+        self.msgID = 137
+        self.sysID = sysID
+        self.compID = compID
+        self.commID = commID
+        # c_int
+        self.servo1 = servo1
+        self.servo2 = servo2
+        self.servo3 = servo3
+        self.servo4 = servo4
+
+    def packpkt(self):
+        return pack('<BBBBiiii', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.servo1.value, self.servo2.value, self.servo3.value, self.servo4.value)
+
 '''GCS 2 UAV'''
 class packet131(object):
     def __init__(self):

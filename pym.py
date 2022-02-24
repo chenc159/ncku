@@ -2,11 +2,26 @@
 This file gets the information of the drone by using pymavlink.
 '''
 
-from pymavlink import mavutil, mavwp
 import time
 from datetime import datetime
-from info import info
 from serial.serialutil import SerialException
+import sys
+import os
+from info import info
+from pymavlink import mavutil, mavwp
+
+
+# Save data to csv
+path = os.path.dirname(os.path.realpath('__file__'))
+address1 = path + '/result' + str('time!!!!!!!!1')
+
+
+if (len(sys.argv) == 2) and (sys.argv[1] == str(1)):
+    save_csv = True
+    print('Will save data to csv file!')
+else:
+    save_csv = False
+    print('Will NOT save data to csv file!')
 
 
 # Start a connection

@@ -106,8 +106,8 @@ class info:
     mode_map_s2n = {'STABILIZE': 0, 'ACRO': 1, 'ALT_HOLD': 2, 'AUTO': 3, 'GUIDED': 4,
      'LOITER': 5, 'RTL': 6, 'CIRCLE': 7, 'POSHOLD': 8, 'LAND': 9}
 
-    mission_mode_mapping = {0: mavutil.mavlink.MAV_CMD_DO_SET_HOME, 1: mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
-     2:  mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 3: mavutil.mavlink.MAV_CMD_NAV_LOITER_TIME, 4: mavutil.mavlink.MAV_CMD_NAV_LAND, 5: mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH}
+    # mission_mode_mapping = {0: mavutil.mavlink.MAV_CMD_DO_SET_HOME, 1: mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+    #  2:  mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 3: mavutil.mavlink.MAV_CMD_NAV_LOITER_TIME, 4: mavutil.mavlink.MAV_CMD_NAV_LAND, 5: mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH}
 
     def system_status(num):
         """ 
@@ -177,9 +177,7 @@ class packet00(object):
         self.commID = commID
 
     def packpkt(self):
-        # utctime = datetime.utcnow()
-        # sys_time =  int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
-        return pack('<BBBB', self.msgID, self.sysID, self.compID, self.commID) #, sys_time)
+        return pack('<BBBB', self.msgID, self.sysID, self.compID, self.commID)
 
 
 '''UAV 2 GCS'''
@@ -223,16 +221,13 @@ class packet128(object):
         self.xacc = xacc
         self.yacc = yacc
         self.zacc = zacc
-        self.Dyn_waypt_lat = Dyn_waypt_lat
-        self.Dyn_waypt_lon = Dyn_waypt_lon
         self.gps_time = gps_time
     def packpkt(self):
-        return pack('<BBBBiiiiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+        return pack('<BBBBiiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.lat.value, self.lon.value, self.alt.value, self.fix.value, self.sat_num.value,
                     self.vx.value, self.vy.value, self.vz.value,
                     self.hdg.value, self.roll.value, self.pitch.value, self.yaw.value,
-                    self.xacc.value, self.yacc.value, self.zacc.value, 
-                    self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.gps_time.value)
+                    self.xacc.value, self.yacc.value, self.zacc.value, self.gps_time.value)
 
 class packet129(object):
     def __init__(self, sysID, compID, commID, command, result):
@@ -277,6 +272,22 @@ class packet130(object):
                      self.others_hdg.value, self.others_gps_time.value)
         # return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
         #              self.relative_dist, self.relative_hdg, self.others_gps_time.value)
+
+class packet136(object):
+    def __init__(self, sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_seq):
+        # int
+        self.msgID = 136
+        self.sysID = sysID
+        self.compID = compID
+        self.commID = commID
+        # c_int
+        self.Dyn_waypt_lat = Dyn_waypt_lat
+        self.Dyn_waypt_lon = Dyn_waypt_lon
+        self.waypt_seq = waypt_seq
+
+    def packpkt(self):
+        return pack('<BBBBiii', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.waypt_seq.value)
 
 '''GCS 2 UAV'''
 class packet131(object):

@@ -8,7 +8,7 @@ from serial.serialutil import SerialException
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
-from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134
+from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136
 
 
 # Connect pixhawk
@@ -48,27 +48,29 @@ lat, lon, alt, vx, vy, vz, hdg = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0
 fix, sat_num = c_int(0), c_int(0)
 mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
 command, result = c_int(255), c_int(255)
-Dyn_waypt_lat, Dyn_waypt_lon = c_int(0), c_int(0)
+Dyn_waypt_lat, Dyn_waypt_lon, waypt_id = c_int(0), c_int(0), c_int(255)
 
 others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
 others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)
 
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
-    128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time),
+    128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
     129: packet129(sysID, compID, commID, command, result),
     130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
     131: packet131(),
     132: packet132(),
     133: packet133(),
-    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time)
+    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time),
+    135: packet135(),
+    136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id)
 }
 
 
 last_sent_time, msgID_to_send = 0, [] 
-seq_togo = 0
 mission_guided = False
 confirmation = 0
+time.sleep(5)
 
 # get the first info
 msg = None
@@ -151,28 +153,25 @@ while True:
         # print('ack: ', mission_ack.value) 
     elif msg_type == "MISSION_CURRENT":
         # print(msg.seq)
-        current_mission_seq = int(msg.seq)
-        # if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > current_mission_seq):
-        #     Dyn_waypt_lat.value = pkt[132].Mission_lat[current_mission_seq] 
-        #     Dyn_waypt_lon.value = pkt[132].Mission_lon[current_mission_seq]
+        if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > msg.seq):
+            waypt_id.value = msg.seq
+            Dyn_waypt_lat.value = pkt[132].Mission_lat[msg.seq] 
+            Dyn_waypt_lon.value = pkt[132].Mission_lon[msg.seq]
     elif msg_type == "COMMAND_ACK":
         print(msg.command, msg.result)
-        command.value = msg.command # 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
+        command.value = msg.command # 16: NAV_WAYPOINT, 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
         result.value = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
-        if (command.value == 22) and (result.value != 0):
-            confirmation += 1
-        else: confirmation = 0
-        if (command.value == 300) and (result.value != 0):
+        if (command.value == 16 or command.value == 22 or command.value == 300) and (result.value != 0):
             confirmation += 1
         else: confirmation = 0
         msgID_to_send.extend([129])
     elif msg_type == "SERVO_OUTPUT_RAW":
         # print(msg)
+        # print(msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw)
         pass
 
     if (time.time() - last_sent_time) >= 1.0:
-        msgID_to_send.extend([128])
-        msgID_to_send.extend([134])
+        msgID_to_send.extend([128, 134, 136])
         last_sent_time = time.time()
     
     # Send packet
@@ -281,10 +280,13 @@ while True:
             elif (pkt[received_msgID].mode_arm == 13): # mission start
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, confirmation, 0, 0, 0, 0, 0, 0, 0)
             elif (pkt[received_msgID].mode_arm == 14): # mission with guided mode
-                seq_togo = 0
+                waypt_id.value = 0
                 if (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
-                    master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
-                        pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo])
+                    Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
+                    master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                        pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value], 0, 0, 0, 0, 0, 0, 0, 0))
+                    # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, confirmation, 0, 0, 0, 0, 
+                    #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
                     mission_guided = True
         
         elif received_msgID == 134: # received v2v
@@ -296,14 +298,14 @@ while True:
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
-        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, pkt[132].Mission_lat[seq_togo]/1e7, pkt[132].Mission_lon[seq_togo]/1e7, pkt[132].Mission_alt[seq_togo])
-        if (seq_togo < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= pkt[131].Desired_dist**2):
-            seq_togo += 1
-            Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo]
-            # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
-            #     pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo], 0, 0, 0, 0, 0, 0, 0, 0))
-            master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
-                pkt[132].Mission_lat[seq_togo], pkt[132].Mission_lon[seq_togo], pkt[132].Mission_alt[seq_togo])
+        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, pkt[132].Mission_lat[waypt_id.value]/1e7, pkt[132].Mission_lon[waypt_id.value]/1e7, pkt[132].Mission_alt[waypt_id.value])
+        if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= pkt[131].Desired_dist**2):
+            waypt_id.value += 1
+            Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value], 0, 0, 0, 0, 0, 0, 0, 0))
+            # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
+            #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
             
         # msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
     
@@ -353,5 +355,7 @@ while True:
     start recording to memory once armed
     csv table: time, mode, position, velocity, imu
     disarm and packet (write) for writing into hardware/sd card
+
+    new packet: dynamics waypts, and seq number
 
     '''

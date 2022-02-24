@@ -199,7 +199,7 @@ class packet127(object):
                     self.mode.value, self.arm.value, self.system_status.value, self.failsafe.value)
 
 class packet128(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, Dyn_waypt_lat, Dyn_waypt_lon, gps_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time):
         # int
         self.msgID = 128
         self.sysID = sysID

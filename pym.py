@@ -36,7 +36,6 @@ if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
 else:
     save_csv = False
     print('Will NOT save data to csv file!')
-# if save_csv and armed and if times_up: ...
 
 # Start a connection
 master = mavutil.mavlink_connection('/dev/ttyACM0')

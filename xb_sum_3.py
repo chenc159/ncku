@@ -1,5 +1,8 @@
 from socket import timeout
 import time, math
+import sys
+import os
+import csv
 from datetime import datetime
 from struct import *
 from ctypes import *
@@ -9,6 +12,32 @@ import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
 from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136, packet137
+
+
+# Write data to csv
+def write_csv(data):
+    utctime = datetime.utcnow() # let file name be the utc time when its write (-m-d-h-m-s:month,day,hour,minute,sec)
+    file_time = str(utctime.month) + "m" + str(utctime.day) + "d" + str(utctime.hour) + "h" + str(utctime.minute) + "m" + str(utctime.second) + "s"
+    address = os.path.dirname(os.path.realpath('__file__')) + '/result/' + file_time + ".csv"
+    with open(address, 'w') as file:
+        writer = csv.writer(file)
+        writer.writerows(data)
+    print(address + " saved!!")
+
+# To save data to csv, the first argument shall be 1
+# Second argument shall give the data saving frequency (default 1 Hz)
+data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+last_save_time = time.time()
+if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
+    save_csv = True
+    print('Will save data to csv file when armed!')
+    if (len(sys.argv) > 2):
+        save_freq = int(sys.argv[2])
+    else: save_freq = 1
+    print('Data saving frequency in Hz: ', save_freq)
+else:
+    save_csv = False
+    print('Will NOT save data to csv file!')
 
 
 # Connect pixhawk
@@ -28,14 +57,10 @@ print("Heartbeat from system (system %u component %u)" % (master.target_system, 
 rate = 2 # desired transmission rate
 master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
 
-# # Connect xbee1
+# Connect xbee1 and declare gcs xbee address
 xbee001 = DigiMeshDevice('/dev/ttyUSB0', 115200)
 remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040F5C5DB"))
 xbee001.open(force_settings=True)
-
-# # Connect xbee2
-# xbee002 = DigiMeshDevice('/dev/ttyUSB2', 115200)
-# xbee002.open(force_settings=True)
 
 # Get checksum
 chks = mavutil.x25crc()
@@ -149,10 +174,6 @@ while True:
         if msg.severity < 4 and (failsafe.value != msg.severity+14):
             failsafe.value = msg.severity+14
             msgID_to_send.extend([127])
-    # elif msg_type == "MISSION_ACK":
-    #     mission_ack.value = msg.type # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
-    #     msgID_to_send.extend([129])
-        # print('ack: ', mission_ack.value) 
     elif msg_type == "MISSION_CURRENT":
         # print(msg.seq)
         if (master.flightmode == 'AUTO') and (len(pkt[132].Mission_lat) > msg.seq):
@@ -168,15 +189,16 @@ while True:
         else: confirmation = 0
         msgID_to_send.extend([129])
     elif msg_type == "SERVO_OUTPUT_RAW":
-        servo1, servo2, servo3, servo4 = msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw
+        servo1.value, servo2.value, servo3.value, servo4.value = msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw
         # print(msg)
 
-    if (time.time() - last_sent_time) >= 1.0:
-        msgID_to_send.extend([128, 134, 136])
+    # send out some pkts every 1 sec
+    if (time.time() - last_sent_time) >= 1.0: 
+        msgID_to_send.extend([128, 134, 136, 137])
         last_sent_time = time.time()
     
     # Send packet
-    msgID_to_send = set(msgID_to_send)
+    msgID_to_send = set(msgID_to_send) # remove duplicate pkt 
     for i in msgID_to_send:
         pkt_bytearray = bytearray([255])
         pkt_bytearray.extend(pkt[i].packpkt()) # pack the pkt info
@@ -187,14 +209,14 @@ while True:
         chks.accumulate(pkt_bytearray[:]) 
         pkt_bytearray.extend(pack('H', chks.crc))
         # send by xbee
-        if i == 134:
+        if i == 134: # xbee broadcast v2v data
             try: xbee001.send_data_broadcast(pkt_bytearray)
             except: pass
-        else:
+        else: # v2g data (with ground xbee address)
             try: xbee001.send_data(remote002,pkt_bytearray)
             except: pass
         # print(i, pkt_bytearray)
-    msgID_to_send = []
+    msgID_to_send = [] # reset pkt-to-send list
 
     
     # Read packet
@@ -250,6 +272,7 @@ while True:
                     print(msg)
                     print(wp.wp(msg.seq))
                     master.mav.send(wp.wp(msg.seq))
+                    # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
                     msg = master.recv_match(type=['MISSION_ACK'], blocking=True, timeout=0.1)
                     try: 
                         command.value, result.value= 999, msg.type # 999 is a self-defined numbmer
@@ -308,55 +331,15 @@ while True:
             # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
             #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
             
-        # msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
+
     
+    if save_csv and master.sysid_state[master.sysid].armed and (time.time() - last_save_time >= 1/save_freq):
+        utctime = datetime.utcnow()
+        data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
+        data_step.extend([mode.value, lat.value, lon.value, alt.value, vx.value, vy.value, vz.value, roll.value, pitch.value, yaw.value])
+        data_list.append(data_step)
+        last_save_time = time.time()
 
-
-
-    # if (time.time() - pkt[133].time < 3.0):
-    #     if (pkt[133].mode_arm < 10) and (pkt[133].mode_arm != mode.value): # change mode
-    #         t4 = threading.Thread(master.set_mode(pkt[133].mode_arm))
-    #         t4.start()
-    #         # master.set_mode(pkt[133].mode_arm)
-    #     elif (pkt[133].mode_arm == 10) and not master.sysid_state[master.sysid].armed: # arm
-    #         t5 = threading.Thread(master.arducopter_arm())
-    #         t5.start()
-    #         # master.motors_armed_wait()
-    #     elif (pkt[133].mode_arm == 11) and master.sysid_state[master.sysid].armed: # disarm
-    #         t6 = threading.Thread(master.arducopter_disarm())
-    #         t6.start()
-    #     elif (pkt[133].mode_arm == 12): # takeoff
-    #         takeoff_alt = 20
-    #         t7 = threading.Thread(master.set_mode(4)) # guided
-    #         t7.start()
-    #         # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(10, sysID, compID, 3, int(0b110111111000), 
-    #         #     current_alt, current_lon, takeoff_alt, 0, 0, 0, 0, 0, 0, 0, 0))
-    #         master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, takeoff_alt)
-    #         # msg = master.recv_match(type=['COMMAND_ACK'],blocking=True)
-    #     elif (pkt[133].mode_arm == 13): # mission start
-    #         t8 = threading.Thread(master.set_mode(3)) # auto
-    #         t8.start()
-    #         master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, 0, 0, 0, 0, 0, 0, 0, 0)
-
-
-    '''v2v to gcs relative distance and heading
-    another packet for guided start (mission waypoints)
-    failsafe seperate to two
-    '''
-
-    '''
-    gcs: receive command ack every command (arm/disarm/set_mode/takeoff/mission start)
-    present command ack in a way that history shows.... can see the previous command ack
-
-    set mode 
-    gps disable
-
-    saving:
-    mission waypoints, time-position, time-mode, 
-    start recording to memory once armed
-    csv table: time, mode, position, velocity, imu
-    disarm and packet (write) for writing into hardware/sd card
-
-    new packet: dynamics waypts, and seq number
-
-    '''
+    if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):
+        write_csv(data_list)
+        data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]

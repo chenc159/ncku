@@ -293,9 +293,10 @@ while True:
             mission_guided = False
             if (pkt[received_msgID].mode_arm <= 11): # disarm
                 send_cmd = True
-            if (pkt[received_msgID].mode_arm < 10): # disarm
-                if (pkt[received_msgID].mode_arm == 8): # convert position mode number
-                    pkt[received_msgID].mode_arm = 16
+                last_cmd_time, last_cmd_send_time = time.time(), time.time()
+            # if (pkt[received_msgID].mode_arm < 10): # disarm
+            #     if (pkt[received_msgID].mode_arm == 8): # convert position mode number
+            #         pkt[received_msgID].mode_arm = 16
             #     input_mode = pkt[received_msgID].mode_arm
             #     master.set_mode(input_mode)
             # elif (pkt[received_msgID].mode_arm == 10): # arm
@@ -324,12 +325,15 @@ while True:
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
     except: pass
 
-    if send_cmd and (time.time() - last_cmd_time < 3.0):
+    if send_cmd and (time.time() - last_cmd_time < 3.0) and (time.time() - last_cmd_send_time > 0.25):
+        last_cmd_send_time = time.time()
         if (pkt[133].mode_arm < 10): # disarm
             # if (pkt[received_msgID].mode_arm == 8): # convert position mode number
             #     pkt[received_msgID].mode_arm = 16
             # input_mode = pkt[received_msgID].mode_arm
-            master.set_mode(pkt[133].mode_arm)
+            if (pkt[received_msgID].mode_arm == 8): # convert position mode number
+                master.set_mode(16)
+            else: master.set_mode(pkt[133].mode_arm)
         elif (pkt[133].mode_arm == 10): # arm
             master.arducopter_arm()
         elif (pkt[133].mode_arm == 11): # disarm

@@ -96,7 +96,7 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
 
 last_sent_time, msgID_to_send = 0, [] 
 mission_guided = False
-confirmation = 0
+last_cmd_time, send_cmd, confirmation = 0, False, 0
 time.sleep(5)
 
 # get the first info
@@ -184,6 +184,8 @@ while True:
         print(msg.command, msg.result)
         command.value = msg.command # 16: NAV_WAYPOINT, 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
         result.value = msg.result # https://mavlink.io/en/messages/common.html#MAV_RESULT
+        if command.value == 176 or command.value == 400:
+            send_cmd = False
         if (command.value == 16 or command.value == 22 or command.value == 300) and (result.value != 0):
             confirmation += 1
         else: confirmation = 0
@@ -289,15 +291,17 @@ while True:
             pkt[received_msgID].unpackpkt(data)
             current_alt, current_lon = lat.value, lon.value
             mission_guided = False
+            if (pkt[received_msgID].mode_arm <= 11): # disarm
+                send_cmd = True
             if (pkt[received_msgID].mode_arm < 10): # disarm
-                input_mode = pkt[received_msgID].mode_arm
-                if (input_mode == 8): # convert position mode number
-                    input_mode = 16
-                master.set_mode(input_mode)
-            elif (pkt[received_msgID].mode_arm == 10): # arm
-                master.arducopter_arm()
-            elif (pkt[received_msgID].mode_arm == 11): # disarm
-                master.arducopter_disarm()
+                if (pkt[received_msgID].mode_arm == 8): # convert position mode number
+                    pkt[received_msgID].mode_arm = 16
+            #     input_mode = pkt[received_msgID].mode_arm
+            #     master.set_mode(input_mode)
+            # elif (pkt[received_msgID].mode_arm == 10): # arm
+            #     master.arducopter_arm()
+            # elif (pkt[received_msgID].mode_arm == 11): # disarm
+            #     master.arducopter_disarm()
             elif (pkt[received_msgID].mode_arm == 12): # takeoff
                 takeoff_alt = 5
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, confirmation, 0, 0, 0, 0, 0, 0, takeoff_alt)
@@ -320,6 +324,18 @@ while True:
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
     except: pass
 
+    if send_cmd and (time.time() - last_cmd_time < 3.0):
+        if (pkt[133].mode_arm < 10): # disarm
+            # if (pkt[received_msgID].mode_arm == 8): # convert position mode number
+            #     pkt[received_msgID].mode_arm = 16
+            # input_mode = pkt[received_msgID].mode_arm
+            master.set_mode(pkt[133].mode_arm)
+        elif (pkt[133].mode_arm == 10): # arm
+            master.arducopter_arm()
+        elif (pkt[133].mode_arm == 11): # disarm
+            master.arducopter_disarm()
+
+
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
         dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, pkt[132].Mission_lat[waypt_id.value]/1e7, pkt[132].Mission_lon[waypt_id.value]/1e7, pkt[132].Mission_alt[waypt_id.value])
@@ -332,7 +348,7 @@ while True:
             #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
             
 
-    
+
     if save_csv and master.sysid_state[master.sysid].armed and (time.time() - last_save_time >= 1/save_freq):
         utctime = datetime.utcnow()
         data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]

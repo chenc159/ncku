@@ -41,8 +41,8 @@ else:
 
 
 # Connect pixhawk
-# master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
-master = mavutil.mavlink_connection('/dev/ttyACM0', baud = 57600)
+master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
+# master = mavutil.mavlink_connection('/dev/ttyACM0', baud = 57600)
 
 # Connect xbee1 and declare gcs xbee address
 xbee001 = DigiMeshDevice('/dev/ttyUSB0', 115200)
@@ -107,9 +107,9 @@ while not msg:
     except: pass
 print("RAW_IMU received")
 
-# get already loaded mission
+# Get already loaded mission
 msg = None
-while not msg:
+while not msg: # Get mission count
     master.waypoint_request_list_send()
     time.sleep(1)
     print('Waiting for mission count...')
@@ -117,7 +117,7 @@ while not msg:
 print('Preloaded mission count: ', msg.count)
 count, seq = msg.count, 0
 pkt[132].mission_init(count)
-while (seq < count):
+while (seq < count): # Get mission item
     master.waypoint_request_send(seq)
     msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
     if not msg:
@@ -293,7 +293,7 @@ while True:
             pkt[received_msgID].unpackpkt(data)
             current_alt, current_lon = lat.value, lon.value
             mission_guided = False
-            if (pkt[received_msgID].mode_arm <= 11): # disarm
+            if (pkt[received_msgID].mode_arm <= 11): # set_mode, arm, disarm
                 send_cmd = True
                 last_cmd_time, last_cmd_send_time = time.time(), time.time()
             # if (pkt[received_msgID].mode_arm < 10): # disarm
@@ -327,20 +327,17 @@ while True:
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
     except: pass
 
+    # Continuously setting out set_mode/arm/disarm if the UAV did not react
     if send_cmd and (time.time() - last_cmd_time < 3.0) and (time.time() - last_cmd_send_time > 0.25):
         last_cmd_send_time = time.time()
         if (pkt[133].mode_arm < 10): # disarm
-            # if (pkt[received_msgID].mode_arm == 8): # convert position mode number
-            #     pkt[received_msgID].mode_arm = 16
-            # input_mode = pkt[received_msgID].mode_arm
-            if (pkt[received_msgID].mode_arm == 8): # convert position mode number
+            if (pkt[133].mode_arm == 8): # convert position mode number
                 master.set_mode(16)
             else: master.set_mode(pkt[133].mode_arm)
         elif (pkt[133].mode_arm == 10): # arm
             master.arducopter_arm()
         elif (pkt[133].mode_arm == 11): # disarm
             master.arducopter_disarm()
-
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
@@ -353,8 +350,7 @@ while True:
             # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
             #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
             
-
-
+    # Save data to memory
     if save_csv and master.sysid_state[master.sysid].armed and (time.time() - last_save_time >= 1/save_freq):
         utctime = datetime.utcnow()
         data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
@@ -362,6 +358,7 @@ while True:
         data_list.append(data_step)
         last_save_time = time.time()
 
+    # Write data to hardware and initialize data list memory
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):
         write_csv(data_list)
         data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]

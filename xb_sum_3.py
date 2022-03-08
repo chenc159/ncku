@@ -41,25 +41,12 @@ else:
 
 
 # Connect pixhawk
-master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
-# master = mavutil.mavlink_connection('/dev/ttyACM0', baud = 57600)
-
-msg = None
-while msg == None:
-    print("waiting for the first Heartbeat ...")
-    try: 
-        # master.wait_heartbeat() # Wait for the first heartbeat 
-        msg = master.recv_match(type=['HEARTBEAT'], blocking=True, timeout=1)
-    except: pass
-print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
-
-# Initialize data stream
-rate = 2 # desired transmission rate
-master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
+# master = mavutil.mavlink_connection('/dev/ttyTHS1', baud = 57600)
+master = mavutil.mavlink_connection('/dev/ttyACM0', baud = 57600)
 
 # Connect xbee1 and declare gcs xbee address
 xbee001 = DigiMeshDevice('/dev/ttyUSB0', 115200)
-remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040F5C5DB"))
+remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040D8DCD5")) # 0013A20040F5C5DB
 xbee001.open(force_settings=True)
 
 # Get checksum
@@ -93,25 +80,38 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4)
 }
 
-
 last_sent_time, msgID_to_send = 0, [] 
 mission_guided = False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
-time.sleep(5)
+# time.sleep(5)
 
-# get the first info
+# Get the first heartbeat
 msg = None
-while msg == None:
+while not msg:
+    print("waiting for the first Heartbeat ...")
+    try: 
+        # master.wait_heartbeat() # Wait for the first heartbeat 
+        msg = master.recv_match(type=['HEARTBEAT'], blocking=True, timeout=1)
+    except: pass
+print("Heartbeat from system (system %u component %u)" % (master.target_system, master.target_component))
+
+# Initialize data stream (request_data_stream_send)
+rate = 2 # desired transmission rate
+msg = None
+# Get the first data
+while not msg:
+    master.mav.request_data_stream_send(master.target_system, master.target_component, mavutil.mavlink.MAV_DATA_STREAM_ALL, rate, 1)
+    time.sleep(1)
     print("waiting for RAW_IMU ...")
     try: msg = master.recv_match(type=['RAW_IMU'], blocking=True, timeout=1)
     except: pass
-    time.sleep(1)
 print("RAW_IMU received")
 
 # get already loaded mission
-master.waypoint_request_list_send()
 msg = None
 while not msg:
+    master.waypoint_request_list_send()
+    time.sleep(1)
     print('Waiting for mission count...')
     msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
 print('Preloaded mission count: ', msg.count)
@@ -126,6 +126,7 @@ while (seq < count):
     seq = msg.seq + 1
     print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
     pkt[132].mission_save_input(msg.seq, msg.command, int(msg.x*1e7), int(msg.y*1e7), int(msg.z))
+print('Done downloading preloaded mission.')
 
 while True:
     try:
@@ -180,6 +181,7 @@ while True:
             waypt_id.value = msg.seq
             Dyn_waypt_lat.value = pkt[132].Mission_lat[msg.seq] 
             Dyn_waypt_lon.value = pkt[132].Mission_lon[msg.seq]
+
     elif msg_type == "COMMAND_ACK":
         print(msg.command, msg.result)
         command.value = msg.command # 16: NAV_WAYPOINT, 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM

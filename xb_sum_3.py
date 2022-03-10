@@ -11,7 +11,7 @@ from serial.serialutil import SerialException
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
-from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136, packet137
+from info import info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136, packet137, packet138
 
 
 # Write data to csv
@@ -77,12 +77,14 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time),
     135: packet135(),
     136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id),
-    137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4)
+    137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4),
+    138: packet138(sysID, compID, commID)
 }
 
 last_sent_time, msgID_to_send = 0, [] 
 mission_guided = False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
+missionseq2gcs = 99
 # time.sleep(5)
 
 # Get the first heartbeat
@@ -200,6 +202,13 @@ while True:
     if (time.time() - last_sent_time) >= 1.0: 
         msgID_to_send.extend([128, 134, 136, 137])
         last_sent_time = time.time()
+
+    # sent out pixhawk mission info 
+    if (missionseq2gcs < len(pkt[132].Mission_alt)):
+        pkt[138].save_data(missionseq2gcs, pkt[132].Mission_modes[missionseq2gcs], pkt[132].Mission_lat[missionseq2gcs], pkt[132].Mission_lon[missionseq2gcs], pkt[132].Mission_alt[missionseq2gcs])
+        missionseq2gcs += 1
+        msgID_to_send.extend([138])
+
     
     # Send packet
     msgID_to_send = set(msgID_to_send) # remove duplicate pkt 
@@ -238,6 +247,7 @@ while True:
             print('waypt_count: ', data[5])
             print('Desired_dist: ',unpack('i',data[6:10])[0])
             print('system131: ',unpack('i',data[10:14])[0])
+            missionseq2gcs = 99
         
         elif received_msgID == 132:
             pkt[received_msgID].unpackpkt(data)
@@ -296,15 +306,6 @@ while True:
             if (pkt[received_msgID].mode_arm <= 11): # set_mode, arm, disarm
                 send_cmd = True
                 last_cmd_time, last_cmd_send_time = time.time(), time.time()
-            # if (pkt[received_msgID].mode_arm < 10): # disarm
-            #     if (pkt[received_msgID].mode_arm == 8): # convert position mode number
-            #         pkt[received_msgID].mode_arm = 16
-            #     input_mode = pkt[received_msgID].mode_arm
-            #     master.set_mode(input_mode)
-            # elif (pkt[received_msgID].mode_arm == 10): # arm
-            #     master.arducopter_arm()
-            # elif (pkt[received_msgID].mode_arm == 11): # disarm
-            #     master.arducopter_disarm()
             elif (pkt[received_msgID].mode_arm == 12): # takeoff
                 takeoff_alt = 5
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, confirmation, 0, 0, 0, 0, 0, 0, takeoff_alt)
@@ -319,6 +320,28 @@ while True:
                     # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, confirmation, 0, 0, 0, 0, 
                     #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
                     mission_guided = True
+            elif (pkt[received_msgID].mode_arm == 15): # get mission from pixhawk and sent them to gcs
+                missionseq2gcs = 0
+                mc_msg = None
+                while not mc_msg: # Get mission count
+                    master.waypoint_request_list_send()
+                    time.sleep(1)
+                    print('Waiting for mission count from Pixhawk...')
+                    mc_msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
+                print('Mission count from Pixhawk: ', msg.count)
+                count, seq = mc_msg.count, 0
+                pkt[132].mission_init(count)
+                while (seq < count): # Get mission item
+                    master.waypoint_request_send(seq)
+                    mi_msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
+                    if not mi_msg:
+                        print('MISSION_ITEM is none ...')
+                        continue
+                    seq = mi_msg.seq + 1
+                    print('Mission seq, command, x, y, z from Pixhawk: ', mi_msg.seq, mi_msg.command, mi_msg.x, mi_msg.y, mi_msg.z)
+                    pkt[132].mission_save_input(mi_msg.seq, mi_msg.command, int(mi_msg.x*1e7), int(mi_msg.y*1e7), int(mi_msg.z))
+                print('Done downloading Pixhawk mission.')
+
         
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_gps_time.value = pkt[received_msgID].unpackpkt(data)
@@ -334,7 +357,7 @@ while True:
             if (pkt[133].mode_arm == 8): # convert position mode number
                 master.set_mode(16)
             else: master.set_mode(pkt[133].mode_arm)
-        elif (pkt[133].mode_arm == 10): # arm
+        elif (pkt[133].mode_arm == 10): # arm   
             master.arducopter_arm()
         elif (pkt[133].mode_arm == 11): # disarm
             master.arducopter_disarm()

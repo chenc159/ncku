@@ -306,6 +306,20 @@ class packet137(object):
         return pack('<BBBBiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.servo1.value, self.servo2.value, self.servo3.value, self.servo4.value)
 
+class packet138(object):
+    def __init__(self, sysID, compID, commID):
+        # int
+        self.msgID = 138
+        self.sysID = sysID
+        self.compID = compID
+        self.commID = commID
+    def save_data(self, seq, cmd, lat, lon, alt):
+        self.seq, self.cmd, self.lat, self.lon, self.alt = seq, cmd, lat, lon, alt
+
+    def packpkt(self, seq, cmd, lat, lon, alt):
+        return pack('<BBBBiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.seq, self.cmd, self.lat, self.lon, self.alt)
+
 '''GCS 2 UAV'''
 class packet131(object):
     def __init__(self):

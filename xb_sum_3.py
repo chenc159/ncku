@@ -331,6 +331,8 @@ while True:
                 print('Mission count from Pixhawk: ', msg.count)
                 count, seq = mc_msg.count, 0
                 pkt[132].mission_init(count)
+                command.value, result.value = 998, count # send out the totoal number of mission item
+                msgID_to_send.extend([129]) 
                 while (seq < count): # Get mission item
                     master.waypoint_request_send(seq)
                     mi_msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)

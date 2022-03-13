@@ -316,7 +316,7 @@ class packet138(object):
     def save_data(self, seq, cmd, lat, lon, alt):
         self.seq, self.cmd, self.lat, self.lon, self.alt = seq, cmd, lat, lon, alt
 
-    def packpkt(self, seq, cmd, lat, lon, alt):
+    def packpkt(self):
         return pack('<BBBBiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.seq, self.cmd, self.lat, self.lon, self.alt)
 

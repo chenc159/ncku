@@ -334,7 +334,7 @@ class packet132(object):
         self.Waypt_seqID = 0
         self.Mission_mode = 0
         self.Formation = 0
-        self.Accept_radius = 0
+        self.Accept_radius = 1.0
         self.lat = 0
         self.lon = 0
         self.alt = 0

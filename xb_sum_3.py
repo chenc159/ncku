@@ -203,11 +203,11 @@ while True:
         msgID_to_send.extend([128, 134, 136, 137])
         last_sent_time = time.time()
 
-    # sent out pixhawk mission info 
-    if (missionseq2gcs < len(pkt[132].Mission_alt)):
-        pkt[138].save_data(missionseq2gcs, pkt[132].Mission_modes[missionseq2gcs], pkt[132].Mission_lat[missionseq2gcs], pkt[132].Mission_lon[missionseq2gcs], pkt[132].Mission_alt[missionseq2gcs])
-        missionseq2gcs += 1
-        msgID_to_send.extend([138])
+        # sent out pixhawk mission info 
+        if (missionseq2gcs < len(pkt[132].Mission_alt)):
+            pkt[138].save_data(missionseq2gcs, pkt[132].Mission_modes[missionseq2gcs], pkt[132].Mission_lat[missionseq2gcs], pkt[132].Mission_lon[missionseq2gcs], pkt[132].Mission_alt[missionseq2gcs])
+            missionseq2gcs += 1
+            msgID_to_send.extend([138])
 
     
     # Send packet
@@ -271,7 +271,7 @@ while True:
                 for i in range(pkt[131].Waypt_count):
                     wp.add(mavutil.mavlink.MAVLink_mission_item_message(
                         sysID, compID, i, frame,
-                        pkt[received_msgID].Mission_modes[i], 0, 0, pkt[received_msgID].Mission_accept_radius[i], 0, 0, 0,
+                        pkt[received_msgID].Mission_modes[i], 0, 0, 0, pkt[received_msgID].Mission_accept_radius[i], 0, 0,
                         pkt[received_msgID].Mission_lat[i]/1e7, pkt[received_msgID].Mission_lon[i]/1e7, pkt[received_msgID].Mission_alt[i]))
                 master.waypoint_clear_all_send()
                 master.waypoint_count_send(wp.count())
@@ -328,7 +328,7 @@ while True:
                     time.sleep(1)
                     print('Waiting for mission count from Pixhawk...')
                     mc_msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
-                print('Mission count from Pixhawk: ', msg.count)
+                print('Mission count from Pixhawk: ', mc_msg.count)
                 count, seq = mc_msg.count, 0
                 pkt[132].mission_init(count)
                 command.value, result.value = 998, count # send out the totoal number of mission item
@@ -367,7 +367,7 @@ while True:
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
         dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, pkt[132].Mission_lat[waypt_id.value]/1e7, pkt[132].Mission_lon[waypt_id.value]/1e7, pkt[132].Mission_alt[waypt_id.value])
-        if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= pkt[131].Desired_dist**2):
+        if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= pkt[132].Accept_radius**2):
             waypt_id.value += 1
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 

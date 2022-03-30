@@ -366,12 +366,12 @@ while True:
 
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
-        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, pkt[132].Mission_lat[waypt_id.value]/1e7, pkt[132].Mission_lon[waypt_id.value]/1e7, pkt[132].Mission_alt[waypt_id.value])
-        if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= pkt[132].Accept_radius**2):
+        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, pkt[132].Mission_lat[waypt_id.value]/1e7, pkt[132].Mission_lon[waypt_id.value]/1e7, pkt[132].Mission_alt[waypt_id.value])
+        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value], 0, 0, 0, 0, 0, 0, 0, 0))
+        if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
             waypt_id.value += 1
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
-            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value], 0, 0, 0, 0, 0, 0, 0, 0))
             # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
             #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
             

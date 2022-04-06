@@ -200,7 +200,7 @@ while True:
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon = msg.lat_int, msg.lon_int
-        print('POSITION_TARGET_GLOBAL_INT alt, lon, alt: ', , msg.lon_int, msg.alt)
+        print('POSITION_TARGET_GLOBAL_INT alt, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
     # send out some pkts every 1 sec
     if (time.time() - last_sent_time) >= 1.0: 

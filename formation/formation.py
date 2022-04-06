@@ -10,7 +10,7 @@ F, m, d = 6, 2, 5
 dt, tm = 0.1, 20
 kp1p, kp1r =0.2, 8
 kp2p, kp2r, kp2dr, kp2dp = 1.4, 8, 5, 7
-kp3p, kp3r, kp3dr, kp3dp =1.4, 8, 10.5, 5.5
+kp3p, kp3r, kp3dr, kp3dp = 1.4, 8, 10.5, 5.5
 theta = 0
 y1, y2, y3 = 0, 0, 0
 
@@ -57,7 +57,7 @@ while t<tm:
         uav3dp = [uav1Lp[0]+d*math.sin(0.01745*(210+theta)), uav1Lp[1]+d*math.cos(0.01745*(210+theta))]
         if uav1Lv[1] > 2:
             uav1Lv[1] = 2
-            a1L = [0,0]
+            # a1L = [0,0]
         
         # 位置誤差判斷黃點與僚機
         r2 = 0.01745*(-kp2r*(uav2dp[0]-uav2Fp[0]))
@@ -80,10 +80,10 @@ while t<tm:
 
         if uav2Fv[1] > 4:
             uav2Fv[1] = 4
-            a2F = [0,0]
+            # a2F = [0,0]
         if uav3Fv[1] > 4:
             uav3Fv[1] = 4
-            a3F = [0,0]
+            # a3F = [0,0]
         if uav2dp[1]-uav2Fp[1] < 0.05 or uav3dp[1]-uav3Fp[1] < 0.05:
             uav2Fv[1] = uav1Lv[1]
             uav3Fv[1] = uav1Lv[1]
@@ -104,7 +104,7 @@ print('Totoal time: ', t)
 print('Excution time: ', time.time()-start_time)
 
 # Plotting
-fig = plt.figure()
+fig = plt.figure(1)
 norm = colors.Normalize(vmin=0, vmax=4)
 plt.plot(p1x, p1y, color = cm.hsv(norm(1)))
 plt.plot(p2x, p2y, color = cm.hsv(norm(2)))

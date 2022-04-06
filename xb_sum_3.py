@@ -67,6 +67,8 @@ others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
 others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)
 
+target_lat, target_lon = 0.0, 0.0
+
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
     129: packet129(sysID, compID, commID, command, result),
@@ -197,7 +199,8 @@ while True:
         servo1.value, servo2.value, servo3.value, servo4.value = msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
-        print('POSITION_TARGET_GLOBAL_INT alt, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
+        target_lat, target_lon = msg.lat_int, msg.lon_int
+        print('POSITION_TARGET_GLOBAL_INT alt, lon, alt: ', , msg.lon_int, msg.alt)
 
     # send out some pkts every 1 sec
     if (time.time() - last_sent_time) >= 1.0: 
@@ -369,9 +372,10 @@ while True:
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
         des_lat, des_lon, des_alt = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value]
         dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
-        print('sending out: ', des_lat, des_lon, des_alt)
-        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+        if (des_lat-target_lat) != 0 or (des_lon-target_lat) != 0:
+            print('sending out: ', des_lat, des_lon, des_alt)
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                    des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
         if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
             waypt_id.value += 1
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]

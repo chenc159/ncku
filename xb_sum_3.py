@@ -201,7 +201,7 @@ while True:
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon = msg.lat_int, msg.lon_int
         Dyn_waypt_lat.value, Dyn_waypt_lon.value = msg.lat_int, msg.lon_int
-        # print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
+        print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
     # send out some pkts every 1 sec
     if (time.time() - last_sent_time) >= 1.0: 
@@ -372,11 +372,11 @@ while True:
     # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
     if (master.flightmode == 'GUIDED') and mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
         des_lat, des_lon, des_alt = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value]
-        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
         if (des_lat != target_lat) or (des_lon != target_lon):
-            print('sending out: ', des_lat, des_lon, des_alt)
+            print('Guided mission command sending out: ', des_lat, des_lon, des_alt)
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                     des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
         if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
             waypt_id.value += 1
             # Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]

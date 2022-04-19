@@ -266,12 +266,12 @@ class packet130(object):
         self.relative_hdg = relative_hdg
 
     def packpkt(self):
-        return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
-                     self.others_lat.value, self.others_lon.value, self.others_alt.value, 
-                     self.others_vx.value, self.others_vy.value, self.others_vz.value, 
-                     self.others_hdg.value, self.others_gps_time.value)
-        # return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
-        #              self.relative_dist, self.relative_hdg, self.others_gps_time.value)
+        # return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
+        #              self.others_lat.value, self.others_lon.value, self.others_alt.value, 
+        #              self.others_vx.value, self.others_vy.value, self.others_vz.value, 
+        #              self.others_hdg.value, self.others_gps_time.value)
+        return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
+                     self.relative_dist, self.relative_hdg, self.others_gps_time.value)
 
 class packet136(object):
     def __init__(self, sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_seq):

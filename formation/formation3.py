@@ -19,10 +19,12 @@ R = 10
 # Initizlize uav initial position and velocity
 n = 3 # total of 3 uavs
 wp = [[0, 0], [0, 40], [40, 40], [40, 0]] # waypoints (desired location for uav1/leader)
+wp = [[0, 0], [0, 40], [40, 40], [20, 20]] # waypoints (desired location for uav1/leader)
 wp_id = 0 # wp id the uav1/leader is heading to 
-uavs_p = [-1, -1, -5, 0, -4, 0] # initial uav1_px, uav1_py, uav2_px, uav2_py, ...
+uavs_p = [-1, -1, -5, 0, -4, -4] # initial uav1_px, uav1_py, uav2_px, uav2_py, ...
 uavs_v = [0, 0, 0, 0, 0, 0] # initial uav1_vx, uav1_vy, uav2_vx, uav2_vy, ...
-uavs_vmax = [2, 4, 4] # maximum allowable velocity of uavs
+# uavs_vmax = [2, 4, 4] # maximum allowable velocity of uavs
+uavs_vmax = [1, 2, 2] # maximum allowable velocity of uavs
 uavs_amax = [5, 5, 5] # maximum allowable acceleration of uavs
 rs = np.zeros((3)) # roll of uavs
 ps = np.zeros((3)) # pitch of uavs
@@ -41,19 +43,28 @@ got_init = False # if all uavs have gotten to their desired initial location
 
 des_hdg = [heading]
 for i in range(len(wp)-1):
-    des_hdg.append(math.atan2((wp[i][1] - wp[i+1][1]),(wp[i][0] - wp[i+1][0])))
+    des_hdg.append(math.atan2((wp[i+1][1] - wp[i][1]),(wp[i+1][0] - wp[i][0])))
+    des_hdg.append(math.atan2((wp[i+1][1] - wp[i][1]),(wp[i+1][0] - wp[i][0])))
 print(des_hdg)
 
 temp = wp
-wp = [temp[0]]
+wp = [[uavs_p[0], uavs_p[1]],temp[0]]
 for i in range(1, len(temp)-1):
     hdg1 = math.atan2((temp[i][1] - temp[i-1][1]),(temp[i][0] - temp[i-1][0]))
     hdg2 = math.atan2((temp[i][1] - temp[i+1][1]),(temp[i][0] - temp[i+1][0]))
-    wp.append([temp[i][0]-R*math.cos(hdg1), temp[i][1]-R*math.sin(hdg1)])
-    wp.append([temp[i][0]-R*math.cos(hdg2), temp[i][1]-R*math.sin(hdg2)])
+    wp.append([round(temp[i][0]-R*math.cos(hdg1),2), round(temp[i][1]-R*math.sin(hdg1),2)])
+    wp.append([round(temp[i][0]-R*math.cos(hdg2),2), round(temp[i][1]-R*math.sin(hdg2),2)])
 wp.append(temp[-1])
-print(wp)
+# print(wp)
 
+temp = wp
+wp = [temp[0], temp[1]]
+hdg1 = heading
+for i in range(1, len(temp)-1):
+    print(temp[i][0], temp[i][1], des_hdg[i], temp[i+1][0], temp[i+1][1], des_hdg[i+1])
+    path, control_pt = calc_4points_bezier_path(temp[i][0], temp[i][1], des_hdg[i], temp[i+1][0], temp[i+1][1], des_hdg[i+1], 0.39)
+    wp.extend([[round(a,2), round(b,2)] for a,b in list(path[1:-1])])
+print(wp)
 
 p1x, p2x, p3x = [uavs_p[0]], [uavs_p[2]], [uavs_p[4]]
 p1y, p2y, p3y = [uavs_p[1]], [uavs_p[3]], [uavs_p[5]]
@@ -62,6 +73,7 @@ d1y, d2y, d3y = [des_ps[1]], [des_ps[3]], [des_ps[5]]
 
 t, t_list = 0, [0]
 start_time = time.time()
+path_len = 0
 while t<tm:
     if not got_init:
         got_init = True
@@ -70,32 +82,17 @@ while t<tm:
                 got_init = False
                 ka = 0.1
     else:
-        # print('here')
-        # break
         if ((wp[wp_id][1] - uavs_p[1])**2 + (wp[wp_id][0] - uavs_p[0])**2) <= 0.01:
             wp_id += 1
             if wp_id == len(wp):
                 break
         ka = 10
         heading = math.atan2((wp[wp_id][1] - uavs_p[1]),(wp[wp_id][0] - uavs_p[0])) # angle of where the leader will head
+
         des_ps[:2] = wp[wp_id]
-        # if wp_id % 2 == 1 or wp_id == 0:
-        #     des_ps[:2] = wp[wp_id]
-        #     des_ps[2:4] = [(uavs_p[0]+d*math.cos(math.pi-ang+heading)), (uavs_p[1]+d*math.sin(math.pi-ang+heading))]
-        #     des_ps[4:] =  [(uavs_p[0]+d*math.cos(math.pi+ang+heading)), (uavs_p[1]+d*math.sin(math.pi+ang+heading))]
-        # else:
-        path, control_pt = calc_4points_bezier_path(uavs_p[0], uavs_p[1], heading, wp[wp_id][0], wp[wp_id][1], des_hdg[int(wp_id/2)+1], 0.39)
-        des_ps[:2] = path[1][:]
-        # path, control_pt = calc_4points_bezier_path(uavs_p[2], uavs_p[3], heading, (uavs_p[0]+d*math.cos(math.pi-ang+heading)), (wp[wp_id][1]+d*math.sin(math.pi-ang+heading)), des_hdg[int(wp_id/2)+1], 0.39)
-        # des_ps[2:4] = path[1][:]
-        # path, control_pt = calc_4points_bezier_path(uavs_p[4], uavs_p[5], heading, (uavs_p[0]+d*math.cos(math.pi+ang+heading)), (wp[wp_id][1]+d*math.sin(math.pi+ang+heading)), des_hdg[int(wp_id/2)+1], 0.39)
-        # des_ps[4:] =  path[1][:]
-            # print(path)
-            # print(wp[wp_id], des_ps[:2])
-            # des_ps[:2] = path[0][0]
         des_ps[2:4] = [(uavs_p[0]+d*math.cos(math.pi-ang+heading)), (uavs_p[1]+d*math.sin(math.pi-ang+heading))]
         des_ps[4:] =  [(uavs_p[0]+d*math.cos(math.pi+ang+heading)), (uavs_p[1]+d*math.sin(math.pi+ang+heading))]
-        
+       
         d1x.append(des_ps[0])
         d1y.append(des_ps[1])
         d2x.append(des_ps[2])
@@ -149,6 +146,7 @@ plt.scatter(d3x, d3y, color = cm.hsv(norm(3)))
 plt.grid()
 plt.xlabel('X')
 plt.ylabel('Y')
+plt.axis('equal')
 plt.legend(['uav1', 'uav2', 'uav3'])
 plt.show()
 

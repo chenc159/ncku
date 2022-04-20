@@ -26,7 +26,7 @@ def calc_4points_bezier_path(sx, sy, syaw, ex, ey, eyaw, offset): #給定控制�
          [ex - dist * np.cos(eyaw), ey - dist * np.sin(eyaw)],
          [ex, ey]])
 
-    path = calc_bezier_path(control_points, n_points=5) # path存放了[0,1,sample = 5 ]每一個位置點 = traj[ x,y
+    path = calc_bezier_path(control_points, n_points=10) # path存放了[0,1,sample = 5 ]每一個位置點 = traj[ x,y
                                                                                                      #x1,y1 ..]
 
     return path, control_points

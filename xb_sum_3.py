@@ -52,43 +52,6 @@ xbee001.open(force_settings=True)
 # Get checksum
 chks = mavutil.x25crc()
 
-# Initialize parameters
-sysID, compID, commID = master.target_system, master.target_component, 22
-gps_time = c_int(0)
-roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)  
-lat, lon, alt, vx, vy, vz, hdg = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)     
-fix, sat_num = c_int(0), c_int(0)
-mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
-command, result = c_int(255), c_int(255)
-Dyn_waypt_lat, Dyn_waypt_lon, waypt_id = c_int(0), c_int(0), c_int(255)
-servo1, servo2, servo3, servo4 = c_int(0), c_int(0), c_int(0), c_int(0)
-
-others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
-others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
-others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)
-
-target_lat, target_lon = 0.0, 0.0
-
-pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
-    128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
-    129: packet129(sysID, compID, commID, command, result),
-    130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
-    131: packet131(),
-    132: packet132(),
-    133: packet133(),
-    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time),
-    135: packet135(),
-    136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id),
-    137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4),
-    138: packet138(sysID, compID, commID)
-}
-
-last_sent_time, msgID_to_send = 0, [] 
-mission_guided = False
-last_cmd_time, send_cmd, confirmation = 0, False, 0
-missionseq2gcs = 99
-# time.sleep(5)
-
 # Get the first heartbeat
 msg = None
 while not msg:
@@ -131,6 +94,44 @@ while (seq < count): # Get mission item
     print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
     pkt[132].mission_save_input(msg.seq, msg.command, int(msg.x*1e7), int(msg.y*1e7), int(msg.z))
 print('Done downloading preloaded mission.')
+
+# Initialize parameters
+sysID, compID, commID = master.target_system, master.target_component, 22
+gps_time = c_int(0)
+roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)  
+lat, lon, alt, vx, vy, vz, hdg = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)     
+fix, sat_num = c_int(0), c_int(0)
+mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
+command, result = c_int(255), c_int(255)
+Dyn_waypt_lat, Dyn_waypt_lon, waypt_id = c_int(0), c_int(0), c_int(255)
+servo1, servo2, servo3, servo4 = c_int(0), c_int(0), c_int(0), c_int(0)
+
+others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
+others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
+others_vx, others_vy, others_vz, others_hdg, others_gps_time = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)
+
+target_lat, target_lon = 0.0, 0.0
+
+pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
+    128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
+    129: packet129(sysID, compID, commID, command, result),
+    130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
+    131: packet131(),
+    132: packet132(),
+    133: packet133(),
+    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time),
+    135: packet135(),
+    136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id),
+    137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4),
+    138: packet138(sysID, compID, commID)
+}
+
+last_sent_time, msgID_to_send = 0, [] 
+mission_guided = False
+last_cmd_time, send_cmd, confirmation = 0, False, 0
+missionseq2gcs = 99
+# time.sleep(5)
+
 
 while True:
     try:

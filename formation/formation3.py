@@ -64,7 +64,7 @@ for i in range(1, len(temp)-1):
     print(temp[i][0], temp[i][1], des_hdg[i], temp[i+1][0], temp[i+1][1], des_hdg[i+1])
     path, control_pt = calc_4points_bezier_path(temp[i][0], temp[i][1], des_hdg[i], temp[i+1][0], temp[i+1][1], des_hdg[i+1], 0.39)
     wp.extend([[round(a,2), round(b,2)] for a,b in list(path[1:-1])])
-print(wp)
+# print(wp)
 
 p1x, p2x, p3x = [uavs_p[0]], [uavs_p[2]], [uavs_p[4]]
 p1y, p2y, p3y = [uavs_p[1]], [uavs_p[3]], [uavs_p[5]]
@@ -140,9 +140,9 @@ norm = colors.Normalize(vmin=0, vmax=4)
 plt.plot(p1x, p1y, color = cm.hsv(norm(1)))
 plt.plot(p2x, p2y, color = cm.hsv(norm(2)))
 plt.plot(p3x, p3y, color = cm.hsv(norm(3)))
-plt.scatter(d1x, d1y, color = cm.hsv(norm(1)))
-plt.scatter(d2x, d2y, color = cm.hsv(norm(2)))
-plt.scatter(d3x, d3y, color = cm.hsv(norm(3)))
+# plt.scatter(d1x, d1y, color = cm.hsv(norm(1)))
+# plt.scatter(d2x, d2y, color = cm.hsv(norm(2)))
+# plt.scatter(d3x, d3y, color = cm.hsv(norm(3)))
 plt.grid()
 plt.xlabel('X')
 plt.ylabel('Y')

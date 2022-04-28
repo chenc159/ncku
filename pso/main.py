@@ -5,11 +5,13 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cm
+import copy
 
 
 class uav():
     def __init__(self, init, des, theta, v0, r):
-        self.cur_pos = init
+        self.ini_pos = copy.deepcopy(init)
+        self.cur_pos = copy.deepcopy(init)
         self.des_pos = des
         self.nxt_pos = [0,0]
         self.theta = theta
@@ -42,7 +44,7 @@ class particle():
         self.position = np.random.uniform(VarMin, VarMax, (nPop, nVar))
         self.velocity = np.zeros((nPop, nVar))
         self.cost = np.ones((nPop))
-        self.best_position = np.copy(self.position)
+        self.best_position = copy.deepcopy(self.position)
         self.best_cost = np.ones((nPop))
         self.globalbest_cost = math.inf
         self.globalbest_pos = np.zeros((nVar))
@@ -50,23 +52,43 @@ class particle():
 
 def ObjectiveFunction():
 
-    F1, F2, F3 = 0, 0, 0
+    F1, F2, F3, F4 = 0, 0, 0, 0
     for i in range(n):
+        xi, yi = uavs[i].ini_pos[0], uavs[i].ini_pos[1]
         xc, yc = uavs[i].cur_pos[0], uavs[i].cur_pos[1]
         xg, yg = uavs[i].des_pos[0], uavs[i].des_pos[1]
         xn, yn = uavs[i].nxt_pos[0], uavs[i].nxt_pos[1]
         F1 += ((xc-xn)**2 + (yc-yn)**2)**(0.5) + ((xn-xg)**2 + (yn-yg)**2)**(0.5)
         # print((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg))
         # print(math.acos((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg)))
-        # if (xc-xg)*(xn-xg)+(yc-yg)*(yn-yg) <= 1 and (xc-xg)*(xn-xg)+(yc-yg)*(yn-yg) >= -1:
         #     F3 += math.acos((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg)) / ((xc-xn)**2 + ((yc-yn)**2)**(0.5))*(((xn-xg)**2 + (yn-yg)**2)**(0.5))
+        # if (xc-xg)*(xn-xg)+(yc-yg)*(yn-yg) <= 1 and (xc-xg)*(xn-xg)+(yc-yg)*(yn-yg) >= -1:
+        # F3 += math.acos((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg)) / ((xc-xg)**2 + ((yc-yg)**2)**(0.5))*(((xn-xg)**2 + (yn-yg)**2)**(0.5))
+            # print(F3)
+        
+        xnc, ync, xng, yng, xcg, ycg = xn-xc, yn-yc, xn-xg, yn-yg, xc-xg, yc-yg
+        pnc, png, pcg = (xnc**2+ync**2), (xng**2+yng**2), (xcg**2+ycg**2)
+        # print((pnc+png-pcg)/(2*pnc**0.5*png**0.5), math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))))
+        # print((pnc+png-pcg), 2*(pnc**0.5)*(png**0.5), (pnc+png-pcg)/(2*pnc**0.5*png**0.5))
+        # if (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
+        #     F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5)))
+            # print(math.pi-math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))))
+        # print(((xc-xi)**2+(yc-yi)**2), ((xn-xi)**2+(yn-yi)**2))
+        if ((xc-xi)**2+(yc-yi)**2) >= ((xn-xi)**2+(yn-yi)**2): # going backward
+            F4 += 1
+            # print(F4)
+        f3_bool = False
         for j in range(n):
             if i!=j:
                 xn2, yn2 = uavs[j].nxt_pos[0], uavs[j].nxt_pos[1]
-                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2*uavs[i].r:
+                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2.0*uavs[i].r:
                     F2 += 1e5
+                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
+                    f3_bool = True
+        if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
+            F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))) # cos law for smoothness detection
 
-    return 1.0*F1 + 1.0*F2 + 0.5*F3
+    return 1.0*F1 + 1.0*F2 + 150.0*F3 + 0.0*F4
 
 
 def pso(ptcle):
@@ -88,8 +110,8 @@ def pso(ptcle):
             for j in range(n):
                 # update velocity
                 ptcle.velocity[i,j] = (w*ptcle.velocity[i,j] +
-                                    c1*random.random()*(ptcle.best_position[i,j] -ptcle.position[i,j]) +
-                                    c2*random.random()*(ptcle.globalbest_pos[j] -ptcle.position[i,j]))
+                                    c1*random.random()*(ptcle.best_position[i,j] - ptcle.position[i,j]) +
+                                    c2*random.random()*(ptcle.globalbest_pos[j] - ptcle.position[i,j]))
                 # apply velocity limits
                 ptcle.velocity[i,j] = min(max(ptcle.velocity[i,j], VelMin), VelMax)
                 # update position
@@ -135,12 +157,12 @@ if __name__ == '__main__':
     # Problem Definition
     nVar = n                # Number of Decision Variables
     # VarSize = [1 nVar]      # Size of Decision Variables Matrix
-    VarMin = 0              # Lower Bound of Variables
-    VarMax = 2*math.pi      # Upper Bound of Variables
+    VarMax = 1.0*math.pi      # Upper Bound of Variables, 2*math.pi
+    VarMin = -VarMax              # Lower Bound of Variables, 0
 
     # PSO parameters
     MaxIt = 100       # Maximum Number of Iterations
-    nPop = 100        # Population Size (Swarm Size)
+    nPop = 150        # Population Size (Swarm Size)
     w = 1             # Inertia Weight
     wdamp = 0.99      # Inertia Weight Damping Ratio
     c1 = 1.5          # Personal Learning Coefficient
@@ -151,23 +173,27 @@ if __name__ == '__main__':
     VelMin = -VelMax
 
     # 速度 & 安全距離設定 velocity and safty range
-    v0, r = 5, 5
+    v0, r = 3, 5
 
     uavs = {}
     for i in range(n):
         uavs[i] = uav([init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
 
     start_time = time.time()
-    for i in range(1000):
-        print('iteration: ', i)
-        ptcle = particle()
-        pso(ptcle)
-        for j in range(n):
-            uavs[j].update_cur(ptcle.globalbest_pos[j])
-        
-        if finished():
-            print('done')
-            break
+    try: 
+        for i in range(1000):
+            print('iteration: ', i)
+            ptcle = particle()
+            pso(ptcle)
+            for j in range(n):
+                uavs[j].update_cur(ptcle.globalbest_pos[j])
+            
+            if finished():
+                print('done')
+                break
+    except KeyboardInterrupt:
+        print('KeyboardInterrupt')
+        pass
 
     print('Excution time: ', time.time()-start_time)
 
@@ -178,6 +204,7 @@ if __name__ == '__main__':
     for j in range(n):
         plt.scatter(uavs[j].des_pos[0], uavs[j].des_pos[1], s=400, color = cm.hsv(norm(j)), marker="*")
         plt.plot(uavs[j].x_list, uavs[j].y_list, color = cm.hsv(norm(j)))
+        plt.scatter(uavs[j].x_list, uavs[j].y_list, s=40, color = cm.hsv(norm(j)), marker=".")
         led.append('uav'+str(j))
     plt.xlabel('X')
     plt.ylabel('Y')

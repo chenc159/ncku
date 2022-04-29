@@ -288,11 +288,11 @@ while True:
                     msg = master.recv_match(type=['MISSION_REQUEST'], blocking=True, timeout=1)
                     if msg == None:
                         print('MISSION_REQUEST msg is none')
-                        continue
-                    print(msg)
-                    print(wp.wp(msg.seq))
-                    master.mav.send(wp.wp(msg.seq))
-                    # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
+                    else:
+                        print(msg)
+                        print(wp.wp(msg.seq))
+                        master.mav.send(wp.wp(msg.seq))
+                        # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
                     msg = master.recv_match(type=['MISSION_ACK'], blocking=True, timeout=0.1)
                     try: 
                         command.value, result.value= 999, msg.type # 999 is a self-defined numbmer
@@ -338,8 +338,9 @@ while True:
                 count, seq = mc_msg.count, 0
                 pkt[132].mission_init(count)
                 command.value, result.value = 998, count # send out the totoal number of mission item
-                msgID_to_send.extend([129]) 
-                while (seq < count): # Get mission item
+                msgID_to_send.extend([129])
+                start_time = time.time() 
+                while (seq < count or time.time()-start_time<40.0): # Get mission item
                     master.waypoint_request_send(seq)
                     mi_msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
                     if not mi_msg:
@@ -348,7 +349,7 @@ while True:
                     seq = mi_msg.seq + 1
                     print('Mission seq, command, x, y, z from Pixhawk: ', mi_msg.seq, mi_msg.command, mi_msg.x, mi_msg.y, mi_msg.z)
                     pkt[132].mission_save_input(mi_msg.seq, mi_msg.command, int(mi_msg.x*1e7), int(mi_msg.y*1e7), int(mi_msg.z))
-                print('Done downloading Pixhawk mission.')
+                print('Done downloading Pixhawk mission. Time: ', start_time)
 
         
         elif received_msgID == 134: # received v2v

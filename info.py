@@ -262,8 +262,8 @@ class packet130(object):
         self.others_gps_time = others_gps_time
     
     def calculated(self, relative_dist, relative_hdg):
-        self.relative_dist = relative_dist
-        self.relative_hdg = relative_hdg
+        self.relative_dist = int(relative_dist)
+        self.relative_hdg = int(relative_hdg)
 
     def packpkt(self):
         # return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,

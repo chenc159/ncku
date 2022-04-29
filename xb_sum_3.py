@@ -74,26 +74,6 @@ while not msg:
     except: pass
 print("RAW_IMU received")
 
-# Get already loaded mission
-msg = None
-while not msg: # Get mission count
-    master.waypoint_request_list_send()
-    time.sleep(1)
-    print('Waiting for mission count...')
-    msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
-print('Preloaded mission count: ', msg.count)
-count, seq = msg.count, 0
-pkt[132].mission_init(count)
-while (seq < count): # Get mission item
-    master.waypoint_request_send(seq)
-    msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
-    if not msg:
-        print('MISSION_ITEM is none ...')
-        continue
-    seq = msg.seq + 1
-    print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
-    pkt[132].mission_save_input(msg.seq, msg.command, int(msg.x*1e7), int(msg.y*1e7), int(msg.z))
-print('Done downloading preloaded mission.')
 
 # Initialize parameters
 sysID, compID, commID = master.target_system, master.target_component, 22
@@ -126,12 +106,32 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     138: packet138(sysID, compID, commID)
 }
 
+# Get already loaded mission
+msg = None
+while not msg: # Get mission count
+    master.waypoint_request_list_send()
+    time.sleep(1)
+    print('Waiting for mission count...')
+    msg = master.recv_match(type=['MISSION_COUNT'],blocking=True,timeout=1)
+print('Preloaded mission count: ', msg.count)
+count, seq = msg.count, 0
+pkt[132].mission_init(count)
+while (seq < count): # Get mission item
+    master.waypoint_request_send(seq)
+    msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
+    if not msg:
+        print('MISSION_ITEM is none ...')
+        continue
+    seq = msg.seq + 1
+    print('Preloaded mission seq, command, x, y, z: ', msg.seq, msg.command, msg.x, msg.y, msg.z)
+    pkt[132].mission_save_input(msg.seq, msg.command, int(msg.x*1e7), int(msg.y*1e7), int(msg.z))
+print('Done downloading preloaded mission.')
+
 last_sent_time, msgID_to_send = 0, [] 
 mission_guided = False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
 missionseq2gcs = 99
 # time.sleep(5)
-
 
 while True:
     try:

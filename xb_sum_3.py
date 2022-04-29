@@ -340,7 +340,7 @@ while True:
                 command.value, result.value = 998, count # send out the totoal number of mission item
                 msgID_to_send.extend([129])
                 start_time = time.time() 
-                while (seq < count or time.time()-start_time<40.0): # Get mission item
+                while (seq < count and time.time()-start_time<40.0): # Get mission item
                     master.waypoint_request_send(seq)
                     mi_msg = master.recv_match(type=['MISSION_ITEM'],blocking=True,timeout=1)
                     if not mi_msg:

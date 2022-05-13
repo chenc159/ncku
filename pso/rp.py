@@ -109,10 +109,10 @@ def ObjectiveFunction():
         for j in range(n):
             if i!=j:
                 xn2, yn2 = uavs[j].nxt_pos[0], uavs[j].nxt_pos[1]
-                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2.0*uavs[i].r:
+                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 1.0*uavs[i].r:
                     F2 += 1e5
                 else:
-                    F2 += 10.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r)
+                    F2 += 1.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 1.0*uavs[i].r)
                 if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
                     f3_bool = True
         if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:

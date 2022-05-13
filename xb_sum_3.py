@@ -202,7 +202,7 @@ while True:
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon = msg.lat_int, msg.lon_int
         Dyn_waypt_lat.value, Dyn_waypt_lon.value = msg.lat_int, msg.lon_int
-        print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
+        # print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
     # send out some pkts every 1 sec
     if (time.time() - last_sent_time) >= 1.0: 
@@ -248,29 +248,15 @@ while True:
         if received_msgID == 131:
             pkt[received_msgID].unpackpkt(data)
             pkt[132].mission_init(pkt[received_msgID].Waypt_count)
-            print('total_count: ', pkt[received_msgID].Waypt_count)
-            print('Broadcast: ', data[4])
-            print('waypt_count: ', data[5])
-            print('Desired_dist: ',unpack('i',data[6:10])[0])
-            print('system131: ',unpack('i',data[10:14])[0])
             missionseq2gcs = 99
         
         elif received_msgID == 132:
             pkt[received_msgID].unpackpkt(data)
             pkt[received_msgID].mission_save()
-            print('Broadcast: ', data[4])
-            print('waypt_seqID: ', data[5]) 
-            print('Mission_mode: ', unpack('i',data[6:10])[0]) 
-            print('Formation: ',  unpack('i',data[10:14])[0])           
-            print('Accept_radius: ',unpack('i',data[14:18])[0])
-            print('lat: ',unpack('i',data[18:22])[0])
-            print('lng: ',unpack('i',data[22:26])[0])
-            print('alt: ',unpack('i',data[26:30])[0])
-            print('system: ',unpack('i',data[30:34])[0])
             print("!!!!", pkt[received_msgID].Mission_alt)
 
             # https://hamishwillee.gitbooks.io/ham_mavdevguide/content/en/services/mission.html
-            if (999 not in pkt[received_msgID].Mission_alt): # if all mission waypts are received
+            if (999 not in pkt[received_msgID].Mission_alt) and pkt[131].Formation == 0: # if all mission waypts are received
                 wp = mavwp.MAVWPLoader()
                 print(data)
                 frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT

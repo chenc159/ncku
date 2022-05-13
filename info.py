@@ -323,24 +323,40 @@ class packet138(object):
 '''GCS 2 UAV'''
 class packet131(object):
     def __init__(self):
-        self.Waypt_count = 0
-        self.Desired_dist = 0
+        self.Formation = 0 # 0:mission, 1: triangle, 2: stright line
+        self.LF = 0 # 0: leader, 1,2: follower 
+        self.Desired_dist = 0 # desire distance between leader and follower
+        self.Radius = 0 # leader's turning radius
+        self.Angle = 0 # angle for triangle formation
+        self.Waypt_num = 0 # total number of waypt for trajectory calculation
+        self.Waypt_count = 0 # waypt count will be sent to nano
     def unpackpkt(self, data):
-        self.Waypt_count = data[5]
-        self.Desired_dist = unpack('i',data[6:10])[0]
+        self.Formation = data[5]
+        self.LF = data[6]
+        self.Desired_dist = data[7]
+        self.Radius = data[8]
+        self.Angle = data[9]
+        self.Waypt_num = data[10]
+        self.Waypt_count = data[11]
+        print('Formation: ', self.Formation, 
+            '\nLeader/Follower: ', self.LF,
+            '\nDesired_dist: ', self.Desired_dist,
+            '\nRadius: ', self.Radius,
+            '\nAngle:', self.Angle,
+            '\nWaypy number: ', self.Waypt_num,
+            '\nWaypt count: ', self.Waypt_count
+        )
 
 class packet132(object):
     def __init__(self):
         self.Waypt_seqID = 0
         self.Mission_mode = 0
-        self.Formation = 0
         self.Accept_radius = 1.0
         self.lat = 0
         self.lon = 0
         self.alt = 0
         # for missions:
         self.Mission_modes = []
-        self.Mission_formation = []
         self.Mission_accept_radius = []
         self.Mission_lat = []
         self.Mission_lon = []
@@ -349,32 +365,34 @@ class packet132(object):
     def unpackpkt(self, data):
         self.Waypt_seqID = data[5]
         self.Mission_mode = unpack('i',data[6:10])[0]
-        self.Formation = unpack('i',data[10:14])[0]
-        self.Accept_radius = unpack('i',data[14:18])[0]
-        self.lat = unpack('i',data[18:22])[0]
-        self.lon = unpack('i',data[22:26])[0]
-        self.alt = unpack('i',data[26:30])[0]
+        self.Accept_radius = unpack('i',data[10:14])[0]
+        self.lat = unpack('i',data[14:18])[0]
+        self.lon = unpack('i',data[18:22])[0]
+        self.alt = unpack('i',data[22:26])[0]
+        print('Waypt_seqID: ', self.Waypt_seqID, 
+            '\nMission_mode: ', self.Mission_mode,
+            '\nAccept_radius: ', self.Accept_radius,
+            '\nLat: ', self.lat,
+            '\nLon', self.lon,
+            '\nAlt: ', self.alt
+        )
     
     # for missions:
     def mission_init(self, Waypt_count):
         # self.Mission_seq = [k for k in range(Waypt_count)]
         self.Mission_modes = [999 for k in range(Waypt_count)]
-        self.Mission_formation = [999 for k in range(Waypt_count)]
         self.Mission_accept_radius =  [999 for k in range(Waypt_count)]
         self.Mission_lat = [999 for k in range(Waypt_count)]
         self.Mission_lon = [999 for k in range(Waypt_count)]
         self.Mission_alt = [999 for k in range(Waypt_count)]
     def mission_save(self):
         self.Mission_modes[self.Waypt_seqID] = self.Mission_mode
-        self.Mission_formation[self.Waypt_seqID] =self.Formation
         self.Mission_accept_radius[self.Waypt_seqID] = self.Accept_radius
         self.Mission_lat[self.Waypt_seqID] = self.lat
         self.Mission_lon[self.Waypt_seqID] = self.lon
         self.Mission_alt[self.Waypt_seqID] = self.alt
     def mission_save_input(self, seq, mode, lat, lon, alt):
         self.Mission_modes[seq] = mode
-        # self.Mission_formation[seq] =self.Formation
-        # self.Mission_accept_radius[seq] = self.Accept_radius
         self.Mission_lat[seq] = lat
         self.Mission_lon[seq] = lon
         self.Mission_alt[seq] = alt

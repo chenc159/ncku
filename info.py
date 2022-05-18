@@ -167,6 +167,44 @@ class info:
             255:   "None"
         }.get(num)
 
+class uav(object):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time, sys_time):
+        # int
+        self.sysID = sysID
+        self.compID = compID
+        self.commID = commID
+
+        self.lat = lat
+        self.lon = lon
+        self.alt = alt
+        self.vx = vx
+        self.vy = vy
+        self.vz = vz
+        self.xacc = xacc
+        self.yacc = yacc
+        self.xgyro = xgyro
+        self.ygyro = ygyro
+        self.zgyro = zgyro
+        self.hdg = hdg
+        self.gps_time = gps_time
+        self.sys_time = sys_time
+
+    def update(self, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time, sys_time):
+        self.lat = lat
+        self.lon = lon
+        self.alt = alt
+        self.vx = vx
+        self.vy = vy
+        self.vz = vz
+        self.xacc = xacc
+        self.yacc = yacc
+        self.xgyro = xgyro
+        self.ygyro = ygyro
+        self.zgyro = zgyro
+        self.hdg = hdg
+        self.gps_time = gps_time
+        self.sys_time = sys_time
+
 
 class packet00(object):
     def __init__(self, sysID, compID, commID):
@@ -458,4 +496,5 @@ class packet134(object):
         self.others_zgyro = unpack('i',data[45:49])[0]
         self.others_hdg = unpack('i',data[49:53])[0]
         self.others_gps_time = unpack('i',data[53:57])[0]
-        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_gps_time
+        self.others_sys_time = unpack('i',data[57:61])[0]
+        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_gps_time, self.others_sys_time

@@ -25,13 +25,17 @@ def plots():
     plt.show()
 
 class uav():
-    def __init__(self, init, des, theta, v0, r):
+    def __init__(self, id, init, des, theta, v0, r):
+        self.id = id
+        self.neighbor = []
         self.ini_pos = copy.deepcopy(init)
         self.cur_pos = copy.deepcopy(init)
         self.des_pos = des
-        self.nxt_pos = [0,0]
-        self.theta = theta
-        self.v0 = v0
+        self.nxt_pos = np.asarray([0,0])
+        self.cur_vel = np.asarray([v0, v0])
+        self.nxt_vel = np.asarray([v0, v0])
+        self.cur_acc = np.asarray([0.0, 0.0])
+        self.nxt_acc = np.asarray([0.0, 0.0])
         self.r = r
         self.x_list = [init[0]]
         self.y_list = [init[1]]
@@ -45,6 +49,7 @@ class uav():
         self.cur_pos[1] += self.v0*math.sin(theta)
         self.x_list.extend([self.cur_pos[0]])
         self.y_list.extend([self.cur_pos[1]])
+        print(self.neighbor)
       
 
 def finished():
@@ -74,23 +79,13 @@ def ObjectiveFunction():
         xc, yc = uavs[i].cur_pos[0], uavs[i].cur_pos[1]
         xg, yg = uavs[i].des_pos[0], uavs[i].des_pos[1]
         xn, yn = uavs[i].nxt_pos[0], uavs[i].nxt_pos[1]
-        F1 += ((xc-xn)**2 + (yc-yn)**2)**(0.5) + ((xn-xg)**2 + (yn-yg)**2)**(0.5)
-        # print((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg))
-        # print(math.acos((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg)))
-        #     F3 += math.acos((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg)) / ((xc-xn)**2 + ((yc-yn)**2)**(0.5))*(((xn-xg)**2 + (yn-yg)**2)**(0.5))
-        # if (xc-xg)*(xn-xg)+(yc-yg)*(yn-yg) <= 1 and (xc-xg)*(xn-xg)+(yc-yg)*(yn-yg) >= -1:
-        # F3 += math.acos((xc-xg)*(xn-xg)+(yc-yg)*(yn-yg)) / ((xc-xg)**2 + ((yc-yg)**2)**(0.5))*(((xn-xg)**2 + (yn-yg)**2)**(0.5))
-            # print(F3)
+        F1 += ((xn-xg)**2 + (yn-yg)**2)**(0.5)
+        # F1 += ((xc-xn)**2 + (yc-yn)**2)**(0.5) + ((xn-xg)**2 + (yn-yg)**2)**(0.5)
         
         xnc, ync, xng, yng, xcg, ycg = xn-xc, yn-yc, xn-xg, yn-yg, xc-xg, yc-yg
         pnc, png, pcg = (xnc**2+ync**2), (xng**2+yng**2), (xcg**2+ycg**2)
-        # if (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
-        #     F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5)))
-            # print(math.pi-math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))))
-        # print(((xc-xi)**2+(yc-yi)**2), ((xn-xi)**2+(yn-yi)**2))
         if ((xc-xi)**2+(yc-yi)**2) >= ((xn-xi)**2+(yn-yi)**2): # going backward
             F4 += 1
-            # print(F4)
         f3_bool = False
         for j in range(n):
             if i!=j:
@@ -99,8 +94,6 @@ def ObjectiveFunction():
                     F2 += 1e5
                 else:
                     F2 += 5.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r)
-                # elif ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
-                #     F2 += ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r
                 if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
                     f3_bool = True
         # if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
@@ -109,7 +102,7 @@ def ObjectiveFunction():
     return 1.0*F1 + 1.0*F2 + 0.0*F3 + 0.0*F4
 
 
-def pso(ptcle):
+def pso():
     w = 1
     for i in range(nPop):
         for j in range(n):
@@ -154,6 +147,15 @@ def pso(ptcle):
 
         w *= wdamp
                     
+def get_neighbor():
+    for i in range(n):
+        uavs[i].neighbor = []
+        for j in range(n):
+            if i != j:
+                dist = np.asarray(uavs[i].cur_pos) - np.asarray(uavs[j].cur_pos)
+                if np.linalg.norm(dist) <= r_com:
+                    uavs[i].neighbor.append(uavs[j].id)
+
 
 
 if __name__ == '__main__':
@@ -171,6 +173,7 @@ if __name__ == '__main__':
     # des_x = [30, 0, 0, 30]
     # des_y = [30, 30, 0, 0]
     n = len(init_x) # number of uav
+    r_com, r_col, r_fin = 15, 5, 5
 
     # Problem Definition
     nVar = n                # Number of Decision Variables
@@ -192,17 +195,38 @@ if __name__ == '__main__':
 
     # 速度 & 安全距離設定 velocity and safty range
     v0, r = 5, 5
-
+    
     uavs = {}
     for i in range(n):
-        uavs[i] = uav([init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
+        uavs[i] = uav(i, [init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
+    
+    t, dt, Maxt = 0, 0.1, 100
+    while t < Maxt:
+        get_neighbor()
+        for i in range(n):
+            if len(uavs[i].neighbor)!=0:
+                # determine if pso is needed!
+
+                pass
+            else:
+                # go straight
+                acc = 9.0*(np.asarray(uavs[i].des_pos) - np.asarray(uavs[i].cur_pos)) - 7*np.asarray(uavs[i].cur_vel)
+                vel = 1
+                pass
+
+        # if no neighbor and no range ...
+        # go straight
+        # else: pso ...
+        t += dt
+        
 
     start_time = time.time()
     for i in range(1000):
         try: 
             print('iteration: ', i)
+            get_neighbor()
             ptcle = particle()
-            pso(ptcle)
+            pso()
             for j in range(n):
                 uavs[j].update_cur(ptcle.globalbest_pos[j])
             

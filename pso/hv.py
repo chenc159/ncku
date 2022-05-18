@@ -25,7 +25,9 @@ def plots():
     plt.show()
 
 class uav():
-    def __init__(self, init, des, theta, v0, r):
+    def __init__(self, id, init, des, theta, v0, r):
+        self.id = id
+        self.neighbor = []
         self.ini_pos = copy.deepcopy(init)
         self.cur_pos = copy.deepcopy(init)
         self.des_pos = des
@@ -180,7 +182,7 @@ if __name__ == '__main__':
     # des_x = [30, 0, 0, 30]
     # des_y = [30, 30, 0, 0]
     n = len(init_x) # number of uav
-    r_fin = 5
+    r_com, r_col, r_fin = 10, 5, 5
 
     # Problem Definition
     nVar = n                # Number of Decision Variables
@@ -205,9 +207,10 @@ if __name__ == '__main__':
 
     uavs = {}
     for i in range(n):
-        uavs[i] = uav([init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
+        uavs[i] = uav(i, [init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
 
     start_time = time.time()
+
     for i in range(1000):
         try: 
             print('iteration: ', i)

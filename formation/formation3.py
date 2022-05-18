@@ -169,3 +169,20 @@ plt.xlabel('T')
 plt.ylabel('Y')
 plt.legend(['uav1', 'uav2', 'uav3'])
 plt.show()
+
+
+# collision avoidance
+# 1,2,3
+# dist_12 < disred_dis, pos_2 = pos_2 (v2=0)
+# dist_13 < disred_dis, pos_3 = pos_3 (v3=0)
+# dist_23 < disred_dis, pos_3 = pos_3 (v3=0)
+# 
+
+# straight line
+# leader go ahead
+# 2, disred_dist*tri(180)
+# 3, 2*disred_dist*tri(180)
+
+# do not follow leader (follow the pre-calculated waypts) when ...
+# didn't receive leader's message in 3 sec
+# leader not in guide mode

@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cm
 import copy
-import multiprocessing
-from multiprocessing import Pool
 
 def plots():
     # Plotting
@@ -28,7 +26,9 @@ def plots():
 
 
 class uav():
-    def __init__(self, init, des, theta, v0, r):
+    def __init__(self, id, init, des, theta, v0, r):
+        self.id = id
+        self.neighbor = []
         self.ini_pos = copy.deepcopy(init)
         self.cur_pos = copy.deepcopy(init)
         self.des_pos = des
@@ -164,12 +164,7 @@ def pso():
     # PSO main loop
     for it in range(MaxIt):
         for i in range(nPop):
-            # res_list = []
             for j in range(n):
-            #     res_list.append(pool.apply_async(update__, [i,j,w]))
-
-            # for res in res_list:
-            #     res.get()
                 for k in range(nCom):
                     # update velocity
                     ptcle.velocity[i,j,k] = (w*ptcle.velocity[i,j,k] +
@@ -198,14 +193,21 @@ def pso():
 
         w *= wdamp
 
-     
+def get_neighbor():
+    for i in range(n):
+        uavs[i].neighbor = []
+        for j in range(n):
+            if i != j:
+                dist = np.asarray(uavs[i].cur_pos) - np.asarray(uavs[j].cur_pos)
+                if np.linalg.norm(dist) <= r_com:
+                    uavs[i].neighbor.append(uavs[j].id) 
 
 
 if __name__ == '__main__':
 
+    start_time = time.time()
     # random.seed(3)
     np.random.seed(3)
-    pool = Pool(multiprocessing.cpu_count())
 
     # initialize
     rng = 30.0
@@ -220,11 +222,12 @@ if __name__ == '__main__':
     n = len(init_x) # number of uav
     MaxAcc = 8.0
     MaxVel = 5.0
+    r_com, r_col, r_fin = 15, 5, 5
+
 
     # Problem Definition
     nVar = n                # Number of Decision Variables
     nCom = 2                # Number of Components (roll, pitch)
-    # VarSize = [1 nVar]      # Size of Decision Variables Matrix
     # VarMax = 1.0*math.pi      # Upper Bound of Variables, 2*math.pi
     # VarMin = -VarMax              # Lower Bound of Variables, 0
     VarMax = math.pi/6.0      
@@ -251,7 +254,26 @@ if __name__ == '__main__':
         # v0 = [0,0]
         uavs[i] = uav([init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
 
-    start_time = time.time()
+
+    t, dt, Maxt = 0, 0.1, 100
+    while t < Maxt:
+        get_neighbor()
+        for i in range(n):
+            if len(uavs[i].neighbor)!=0:
+                # determine if pso is needed!
+
+                pass
+            else:
+                # go straight
+                acc = 9.0*(np.asarray(uavs[i].des_pos) - np.asarray(uavs[i].cur_pos)) - 7*np.asarray(uavs[i].cur_vel)
+                vel = 1
+                pass
+
+        # if no neighbor and no range ...
+        # go straight
+        # else: pso ...
+        t += dt
+
     for i in range(1000):
         try: 
             print('Iteration: ', i)
@@ -274,5 +296,9 @@ if __name__ == '__main__':
     plots()
 
 
+#  pre-plan... recalulate if XX triggered...
+# Define X, and define what uav is involved ...
+# Define the info for v2v communication
+# Define how to reconisder in decentrilzed mode ... all uav shall get the same new trajectory
 
 

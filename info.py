@@ -168,7 +168,7 @@ class info:
         }.get(num)
 
 class uav(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time, sys_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
         # int
         self.sysID = sysID
         self.compID = compID
@@ -186,10 +186,11 @@ class uav(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.mode = mode
         self.gps_time = gps_time
         self.sys_time = sys_time
 
-    def update(self, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time, sys_time):
+    def update(self, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
         self.lat = lat
         self.lon = lon
         self.alt = alt
@@ -202,6 +203,7 @@ class uav(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.mode = mode
         self.gps_time = gps_time
         self.sys_time = sys_time
 
@@ -355,6 +357,7 @@ class packet138(object):
         self.seq, self.cmd, self.lat, self.lon, self.alt = seq, cmd, lat, lon, alt
 
     def packpkt(self):
+        print(self.seq, self.cmd, self.lat, self.lon, self.alt)
         return pack('<BBBBiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.seq, self.cmd, self.lat, self.lon, self.alt)
 
@@ -451,7 +454,7 @@ class packet135(object):
 
 '''UAV 2 UAV'''
 class packet134(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, gps_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time):
         # int
         self.msgID = 134
         self.sysID = sysID
@@ -470,14 +473,15 @@ class packet134(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.mode = mode
         self.gps_time = gps_time
 
     def packpkt(self):
-        return pack('<BBBBiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+        return pack('<BBBBiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.lat.value, self.lon.value, self.alt.value,
                     self.vx.value, self.vy.value, self.vz.value,
                     self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
-                    self.hdg.value, self.gps_time.value)
+                    self.hdg.value, self.mode.value, self.gps_time.value)
     
     def unpackpkt(self, data):
         self.others_sysID = data[2]
@@ -495,6 +499,7 @@ class packet134(object):
         self.others_ygyro = unpack('i',data[41:45])[0]
         self.others_zgyro = unpack('i',data[45:49])[0]
         self.others_hdg = unpack('i',data[49:53])[0]
-        self.others_gps_time = unpack('i',data[53:57])[0]
-        self.others_sys_time = unpack('i',data[57:61])[0]
-        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_gps_time, self.others_sys_time
+        self.others_mode = unpack('i',data[53:57])[0]
+        self.others_gps_time = unpack('i',data[57:61])[0]
+        self.others_sys_time = unpack('i',data[61:65])[0]
+        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_mode, self.others_gps_time, self.others_sys_time

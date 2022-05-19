@@ -36,7 +36,7 @@ def triangle_straight(ts, id, Desired_dist, Radius, Angle, Waypt_num, x, y):
             wp_x12, wp_y12 = [], []
             # wp_x122, wp_y122 = [], []
             for i in range(len(wp_x)):
-                if i != len(wp_x) -1:
+                if i != len(wp_x)-1:
                     heading = math.atan2((wp_y[i+1] - wp_y[i]),(wp_x[i+1] - wp_x[i]))
                 wp_x12.extend([wp_x[i]+Desired_dist*math.cos(math.pi+heading+ang)])
                 wp_y12.extend([wp_y[i]+Desired_dist*math.sin(math.pi+heading+ang)])
@@ -47,7 +47,7 @@ def triangle_straight(ts, id, Desired_dist, Radius, Angle, Waypt_num, x, y):
             wp_x12, wp_y12 = [], []
             # wp_x122, wp_y122 = [], []
             for i in range(len(wp_x)):
-                if i != len(wp_x) -1:
+                if i != len(wp_x)-1:
                     heading = math.atan2((wp_y[i+1] - wp_y[i]),(wp_x[i+1] - wp_x[i]))
                 wp_x12.extend([wp_x[i]+id*Desired_dist*math.cos(math.pi+heading)])
                 wp_y12.extend([wp_y[i]+id*Desired_dist*math.sin(math.pi+heading)])

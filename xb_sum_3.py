@@ -28,7 +28,7 @@ def write_csv(data):
 
 # To save data to csv, the first argument shall be 1
 # Second argument shall give the data saving frequency (default 1 Hz)
-data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
 last_save_time = time.time()
 if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
     save_csv = True
@@ -85,17 +85,13 @@ lat, lon, alt, vx, vy, vz, hdg = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0
 fix, sat_num = c_int(0), c_int(0)
 mode, arm, system_status, failsafe = c_int(255), c_int(255), c_int(255), c_int(255)
 command, result = c_int(255), c_int(255)
-Dyn_waypt_lat, Dyn_waypt_lon, waypt_id = c_int(0), c_int(0), c_int(255)
+Dyn_waypt_lat, Dyn_waypt_lon, Dyn_waypt_alt, waypt_id = c_int(0), c_int(0), c_int(0), c_int(255)
 servo1, servo2, servo3, servo4 = c_int(0), c_int(0), c_int(0), c_int(0)
 
 others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
 others_vx, others_vy, others_vz, others_hdg, others_mode = c_int(0), c_int(0), c_int(0), c_int(0), c_int(255)
 others_gps_time, others_sys_time = c_int(0), c_int(0)
-other_uavs = {}
-
-target_lat, target_lon = 0.0, 0.0
-guide_lat, guide_lon, guide_alt = [], [], [] 
 
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
@@ -132,11 +128,15 @@ while (seq < count): # Get mission item
     pkt[132].mission_save_input(msg.seq, msg.command, int(msg.x*1e7), int(msg.y*1e7), int(msg.z))
 print('Done downloading preloaded mission.')
 
+# some parameter initialization
+other_uavs = {}
+target_lat, target_lon = 0.0, 0.0
+stop_lat, stop_lon, stop_alt = 0.0, 0.0, 0
+guide_lat, guide_lon, guide_alt = [], [], []
 last_sent_time, last_seq_sent_time, msgID_to_send = 0, 0, [] 
-Mission_guided, Formation_start = False, False
+Mission_guided, Formation_start, Formation_stop = False, False, False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
 missionseq2gcs, wayptseq2gcs = 99, 99
-# time.sleep(5)
 
 while True:
     try:
@@ -167,7 +167,7 @@ while True:
         yaw.value = round(msg.yaw*57.2958)
     elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
         lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.relative_alt
-        vx.value, vy.value, vz.value, hdg.value = msg.vx, msg.vy, msg.vz, msg.hdg
+        vx.value, vy.value, vz.value = msg.vx, msg.vy, msg.vz # hdg.value = msg.hdg
     elif msg_type == "SCALED_IMU2":           # imu: linear acceleration and angular velocity
         xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
         xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro
@@ -191,6 +191,7 @@ while True:
             waypt_id.value = msg.seq
             Dyn_waypt_lat.value = pkt[132].Mission_lat[msg.seq] 
             Dyn_waypt_lon.value = pkt[132].Mission_lon[msg.seq]
+            Dyn_waypt_alt.value = pkt[132].Mission_alt[msg.seq]
     elif msg_type == "COMMAND_ACK":
         print(msg.command, msg.result)
         command.value = msg.command # 16: NAV_WAYPOINT, 22: NAV_TAKEOFF, 176: DO_SET_MODE, 300: MISSION_START, 400: ARM_DISARM
@@ -206,15 +207,18 @@ while True:
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon = msg.lat_int, msg.lon_int
-        Dyn_waypt_lat.value, Dyn_waypt_lon.value = msg.lat_int, msg.lon_int
+        Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = msg.lat_int, msg.lon_int, msg.alt #degE7, degE7, m 
         # print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
     # send out some pkts every 1 sec
     if (time.time() - last_sent_time) >= 1.0: 
+        # update heading as the "desired" heading, not as yaw angle
+        dx, dy, dz = pm.geodetic2enu(Dyn_waypt_lat.value/1e7, Dyn_waypt_lon.value/1e7, Dyn_waypt_alt.value, lat.value/1e7, lon.value/1e7, alt.value/1e3)
+        hdg.value = int(math.atan2(dy, dx)*180/math.pi)
         msgID_to_send.extend([128, 134, 136, 137])
         last_sent_time = time.time()
-        
-    if (time.time() - last_seq_sent_time) >= 0.3:
+
+    if (time.time() - last_seq_sent_time) >= 0.3: # 0.3 sec may lost packet, 1 sec won't
         # sent out pixhawk mission info 
         if (missionseq2gcs < len(pkt[132].Mission_alt)):
             pkt[138].save_data(missionseq2gcs, pkt[132].Mission_modes[missionseq2gcs], pkt[132].Mission_lat[missionseq2gcs], pkt[132].Mission_lon[missionseq2gcs], pkt[132].Mission_alt[missionseq2gcs])
@@ -304,15 +308,16 @@ while True:
                 else:
                     wayptseq2gcs = 999
                     x_list, y_list = [], []
-                    for i in range(pkt[131].Waypt_count):
+                    for i in range(pkt[131].Waypt_count): # convert lla to enu
                         des_lat, des_lon, des_alt = pkt[132].Mission_lat[i], pkt[132].Mission_lon[i], pkt[132].Mission_alt[i]
                         x, y, z = pm.geodetic2enu(des_lat/1e7, des_lon/1e7, des_alt, lat.value/1e7, lon.value/1e7, alt.value/1e3)
                         x_list.append(x)
                         y_list.append(y)
+                    # pre-calculate triangle/straight-line formation waypoints
                     wp_x, wp_y = plan.triangle_straight(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Radius, pkt[131].Angle, pkt[131].Waypt_num, x_list, y_list)
                     guide_lat, guide_lon, guide_alt = [], [], []
-                    for i in range(len(wp_x)):
-                        guide_alt.append(pkt[132].Mission_alt[0])
+                    for i in range(len(wp_x)): # convert enu to lla, and store them in guide_lat & guide_lon
+                        guide_alt.append(pkt[132].Mission_alt[0]) # assume altitudes are the same, and store them in guide_alt
                         a, b, c = pm.enu2geodetic(wp_x[i], wp_y[i], guide_alt[-1], lat.value/1e7, lon.value/1e7, alt.value/1e3)  
                         guide_lat.append(a)
                         guide_lon.append(b)
@@ -322,7 +327,7 @@ while True:
         elif received_msgID == 133:
             print(data[5], data)
             pkt[received_msgID].unpackpkt(data)
-            Mission_guided, Formation_start = False, False
+            Mission_guided, Formation_start, Formation_stop = False, False, False
             if (pkt[received_msgID].mode_arm <= 11): # set_mode, arm, disarm
                 send_cmd = True
                 last_cmd_time, last_cmd_send_time = time.time(), time.time()
@@ -334,7 +339,7 @@ while True:
             elif (pkt[received_msgID].mode_arm == 14): # mission with guided mode (change this to "send", then continue with start ... and note stop)
                 waypt_id.value = 0
                 if (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
-                    Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
+                    # Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
                     master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                         pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value], 0, 0, 0, 0, 0, 0, 0, 0))
                     # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, confirmation, 0, 0, 0, 0, 
@@ -380,7 +385,8 @@ while True:
                 Formation_start = True
                 print('Formation flight STARTED!')
             elif (pkt[received_msgID].mode_arm == 19): # Formation stop: stop guided mission
-                Formation_start = False
+                Formation_stop = True
+                stop_lat, stop_lon, stop_alt = lat.value, lon.value, alt.value
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                         lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
                 print('Formation flight STOPPED!')
@@ -410,6 +416,7 @@ while True:
             master.arducopter_disarm()
 
     if (master.flightmode == 'GUIDED'):
+        # Collision avoidance above all
         if pkt[131].LF != 0:
             for n_id in other_uavs:
                 if n_id < sysID:
@@ -417,7 +424,9 @@ while True:
                     if (dx**2 + dy**2)**0.5 < pkt[131].Desired_dist:
                         print('Collision Avoidance !!!', sysID, n_id)
                         master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                            lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
+                            lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0)) 
+                        # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
+                        #     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) 
                         break
         # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
         elif Mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
@@ -430,34 +439,76 @@ while True:
             if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
                 waypt_id.value += 1
         
-        elif Formation_start and len(guide_lat)!=0:
-            des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]
-            if (des_lat != target_lat) or (des_lon != target_lon):
-                print('Guided mission command sending out: ', des_lat, des_lon, des_alt)
+        elif Formation_stop: # stop formation, uav stay at where it is when the stop command is ordered (v=0)
+            if (stop_lat != target_lat) or (stop_lon != target_lon):
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                        des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
-            dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
-            if (waypt_id.value < len(guide_lat) - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
-                waypt_id.value += 1
+                                stop_lat, stop_lon, stop_alt/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
 
-        # else:
+        elif Formation_start and len(guide_lat)!=0:
+            utctime = datetime.utcnow()
+            if pkt[131].LF == 0: 
+                # if this uav is the leader, just follow the pre-planned path
+                des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]
+                if (des_lat != target_lat) or (des_lon != target_lon):
+                    print('Guided mission command sending out: ', des_lat, des_lon, des_alt)
+                    master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                            des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
+                if (waypt_id.value < len(guide_lat) - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
+                    waypt_id.value += 1
 
-            # Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
-            # master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 0, 0, 0, 
-            #     pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value])
-            
+            elif (other_uavs[1].mode != 4) or (int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3)) - other_uavs[1].sys_time <= 5000):
+                # leader not in guided mode or did not receive leader's info for more than 3 sec
+                # use the pre-calculated path ... fly without leader
+                if waypt_id.value == 0: # try to find out which waypt the uav shall start following
+                    dis = 9999
+                    for i in range(len(guide_lat)):
+                        dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, guide_lat[i], guide_lon[i], guide_alt[i])
+                        if dis > (dx**2 + dy**2)**0.5:
+                            waypt_id.value = i # go to the nearest waypt
+                    if waypt_id.value != len(guide_lat): waypt_id.value += 1 # advance one waypt to prevent from uav going backward
+                des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]
+                if (des_lat != target_lat) or (des_lon != target_lon):
+                    print('Guided mission command sending out: ', des_lat, des_lon, des_alt)
+                    master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                            des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
+                if (waypt_id.value < len(guide_lat) - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
+                    waypt_id.value += 1
+
+            elif pkt[131].Formation == 1: # triangle
+                # if this uav is a follower, plan its desired location based on the leader's location
+                dx, dy, dz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
+                ang = pkt[131].Angle*math.pi/180
+                if pkt[131].LF == 2: ang *= -1
+                des_x = dx + pkt[131].Desired_dist*math.cos(math.pi+other_uavs[1].hdg+ang)
+                des_y = dy + pkt[131].Desired_dist*math.sin(math.pi+other_uavs[1].hdg+ang)
+                des_lat, des_lon, des_alt = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)
+                if (des_lat != target_lat) or (des_lon != target_lon):
+                    master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                                des_lat, des_lon, guide_alt[0], 0, 0, 0, 0, 0, 0, 0, 0))
+
+            elif pkt[131].Formation == 2: # straight line
+                # if this uav is a follower, plan its desired location based on the leader's location
+                dx, dy, dz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
+                des_x = dx + pkt[131].LF*pkt[131].Desired_dist*math.cos(math.pi+other_uavs[1].hdg)
+                des_y = dy + pkt[131].LF*pkt[131].Desired_dist*math.sin(math.pi+other_uavs[1].hdg)
+                des_lat, des_lon, des_alt = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)
+                if (des_lat != target_lat) or (des_lon != target_lon):
+                    master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                                des_lat, des_lon, guide_alt[0], 0, 0, 0, 0, 0, 0, 0, 0))
+
+           
     # Save data to memory
     if save_csv and master.sysid_state[master.sysid].armed and (time.time() - last_save_time >= 1/save_freq):
         utctime = datetime.utcnow()
         data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
-        data_step.extend([mode.value, lat.value, lon.value, alt.value, vx.value, vy.value, vz.value, roll.value, pitch.value, yaw.value])
+        data_step.extend([mode.value, lat.value, lon.value, alt.value, Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value, vx.value, vy.value, vz.value, roll.value, pitch.value, yaw.value])
         data_list.append(data_step)
         last_save_time = time.time()
 
     # Write data to hardware and initialize data list memory
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):
         write_csv(data_list)
-        data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+        data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
 
-
-# v2v add mode in packet

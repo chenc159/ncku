@@ -466,7 +466,7 @@ while True:
                         dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, guide_lat[i], guide_lon[i], guide_alt[i])
                         if dis > (dx**2 + dy**2)**0.5:
                             waypt_id.value = i # go to the nearest waypt
-                    if waypt_id.value != len(guide_lat): waypt_id.value += 1 # advance one waypt to prevent from uav going backward
+                    if waypt_id.value < len(guide_lat) - 1: waypt_id.value += 1 # advance one waypt to prevent from uav going backward
                 des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]
                 if (des_lat != target_lat) or (des_lon != target_lon):
                     print('Guided mission command sending out: ', des_lat, des_lon, des_alt)

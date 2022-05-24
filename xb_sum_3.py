@@ -225,7 +225,7 @@ while True:
             missionseq2gcs += 1
             msgID_to_send.extend([138])
         elif (wayptseq2gcs < len(guide_lat)):
-            pkt[138].save_data(wayptseq2gcs, 0, int(guide_lat[wayptseq2gcs]*1e7), int(guide_lon[wayptseq2gcs]*1e7), int(guide_alt[wayptseq2gcs]))
+            pkt[138].save_data(wayptseq2gcs, 0, int(guide_lat[wayptseq2gcs]), int(guide_lon[wayptseq2gcs]), int(guide_alt[wayptseq2gcs]))
             wayptseq2gcs += 1
             msgID_to_send.extend([138])
         last_seq_sent_time = time.time()
@@ -320,10 +320,10 @@ while True:
                     wp_x, wp_y = plan.triangle_straight(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Radius, pkt[131].Angle, pkt[131].Waypt_num, x_list, y_list)
                     guide_lat, guide_lon, guide_alt = [], [], []
                     for i in range(len(wp_x)): # convert enu to lla, and store them in guide_lat & guide_lon
-                        guide_alt.append(pkt[132].Mission_alt[0]) # assume altitudes are the same, and store them in guide_alt
+                        guide_alt.append(int(pkt[132].Mission_alt[0])) # assume altitudes are the same, and store them in guide_alt
                         a, b, c = pm.enu2geodetic(wp_x[i], wp_y[i], guide_alt[-1], lat.value/1e7, lon.value/1e7, alt.value/1e3)  
-                        guide_lat.append(a)
-                        guide_lon.append(b)
+                        guide_lat.append(int(a*1e7))
+                        guide_lon.append(int(b*1e7))
                     print('Finish Formation Calculation!', guide_lat, guide_lon)
 
                     if save_csv:

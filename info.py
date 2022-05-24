@@ -301,9 +301,9 @@ class packet130(object):
         self.others_hdg = others_hdg
         self.others_gps_time = others_gps_time
     
-    def calculated(self, relative_dist, relative_hdg):
+    def calculated(self, relative_dist, relative_ang):
         self.relative_dist = int(relative_dist)
-        self.relative_hdg = int(relative_hdg)
+        self.relative_ang = int(relative_ang)
 
     def packpkt(self):
         # return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
@@ -311,7 +311,7 @@ class packet130(object):
         #              self.others_vx.value, self.others_vy.value, self.others_vz.value, 
         #              self.others_hdg.value, self.others_gps_time.value)
         return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
-                     self.relative_dist, self.relative_hdg, self.others_gps_time.value)
+                     self.relative_dist, self.relative_ang, self.others_gps_time.value)
 
 class packet136(object):
     def __init__(self, sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_seq):
@@ -454,7 +454,7 @@ class packet135(object):
 
 '''UAV 2 UAV'''
 class packet134(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, yaw, mode, gps_time):
         # int
         self.msgID = 134
         self.sysID = sysID
@@ -473,15 +473,23 @@ class packet134(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.yaw = yaw
         self.mode = mode
         self.gps_time = gps_time
 
     def packpkt(self):
-        return pack('<BBBBiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+        # a = pack('<BBBBiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+        #             self.lat.value, self.lon.value, self.alt.value,
+        #             self.vx.value, self.vy.value, self.vz.value,
+        #             self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
+        #             self.hdg.value, self.yaw.value, self.mode.value, self.gps_time.value)
+        # print('a',len(a))
+        # return a
+        return pack('<BBBBiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.lat.value, self.lon.value, self.alt.value,
                     self.vx.value, self.vy.value, self.vz.value,
                     self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
-                    self.hdg.value, self.mode.value, self.gps_time.value)
+                    self.hdg.value, self.yaw.value, self.mode.value, self.gps_time.value)
     
     def unpackpkt(self, data):
         self.others_sysID = data[2]
@@ -499,7 +507,11 @@ class packet134(object):
         self.others_ygyro = unpack('i',data[41:45])[0]
         self.others_zgyro = unpack('i',data[45:49])[0]
         self.others_hdg = unpack('i',data[49:53])[0]
-        self.others_mode = unpack('i',data[53:57])[0]
-        self.others_gps_time = unpack('i',data[57:61])[0]
-        self.others_sys_time = unpack('i',data[61:65])[0]
-        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_mode, self.others_gps_time, self.others_sys_time
+        self.others_yaw = unpack('i',data[53:57])[0]
+        self.others_mode = unpack('i',data[57:61])[0]
+        self.others_gps_time = unpack('i',data[61:65])[0]
+        # print('bef')
+        # print(len(data))
+        # print(unpack('i',data[65:69])[0])
+        self.others_sys_time = unpack('i',data[65:69])[0]
+        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_yaw, self.others_mode, self.others_gps_time, self.others_sys_time

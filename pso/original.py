@@ -41,7 +41,7 @@ class uav():
         self.nxt_pos[1] = self.cur_pos[1] + self.v0*math.sin(theta)
 
     def update_cur(self, theta):
-        print(theta)
+        # print(theta)
         self.cur_pos[0] += self.v0*math.cos(theta)
         self.cur_pos[1] += self.v0*math.sin(theta)
         self.x_list.extend([self.cur_pos[0]])
@@ -99,10 +99,25 @@ def ObjectiveFunction():
                 xn2, yn2 = uavs[j].nxt_pos[0], uavs[j].nxt_pos[1]
                 if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2.0*uavs[i].r:
                     F2 += 1e5
-                else:
-                    F2 += 5.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r)
+                # else:
+                #     F2 += 5.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r)
                 # elif ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
                 #     F2 += ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r
+                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= uavs[i].r:
+                    F2 += 1e5
+                elif ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3*uavs[i].r:
+                    if abs(xcg) <= 0.05 and abs(ycg) <= 0.05:
+                        F2 += uavs[i].r/((xn-xn2)**2 + (yn-yn2)**2)**(0.5)
+                    else:
+                        vxn1, vxn2, vyn1, vyn2 = v0, v0, v0, v0
+                        nvxn1 = vxn1/math.sqrt(vxn1**2+vyn1**2)
+                        nvyn1 = vyn1/math.sqrt(vxn1**2+vyn1**2)
+                        nvxn2 = vxn2/math.sqrt(vxn2**2+vyn2**2)
+                        nvyn2 = vyn2/math.sqrt(vxn2**2+vyn2**2)
+                        if nvxn1*nvxn2 + nvyn1*nvyn2 >= 0:
+                            F2 += uavs[i].r/((xn-xn2)**2 + (yn-yn2)**2)**(0.5)
+
+
                 if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
                     f3_bool = True
         # if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
@@ -129,8 +144,6 @@ def pso(ptcle):
         for i in range(nPop):
             for j in range(n):
                 # update velocity
-                if round(ptcle.position[i,j],3) == 1.57:
-                    print(i,j,'bbb')
                 ptcle.velocity[i,j] = (w*ptcle.velocity[i,j] +
                                     c1*np.random.random()*(ptcle.best_position[i,j] - ptcle.position[i,j]) +
                                     c2*np.random.random()*(ptcle.globalbest_pos[j] - ptcle.position[i,j]))
@@ -138,17 +151,11 @@ def pso(ptcle):
                 ptcle.velocity[i,j] = min(max(ptcle.velocity[i,j], VelMin), VelMax)
                 # update position
                 ptcle.position[i,j] += ptcle.velocity[i,j]
-                if round(ptcle.position[i,j],3) == 1.57:
-                    print(i,j,'bb')
                 # velocity mirror effect
                 if ptcle.position[i,j] < VarMin or ptcle.position[i,j] > VarMax:
                     ptcle.velocity[i,j] *= -1
                 # apply position limits
-                if round(ptcle.position[i,j],3) == 1.57:
-                    print(i,j,'b')
                 ptcle.position[i,j] = min(max(ptcle.position[i,j], VarMin), VarMax)
-                if round(ptcle.position[i,j],3) == 1.57:
-                    print(i,j,'a')
                 uavs[j].update_nxt(ptcle.position[i,j])
             ptcle.cost[i] = ObjectiveFunction()
             # update personal best

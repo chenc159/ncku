@@ -13,13 +13,12 @@ from serial.serialutil import SerialException
 import pymap3d as pm
 from pymavlink import mavutil, mavwp
 from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddress
-from info import * #info, packet127, packet128, packet129, packet130, packet131, packet132, packet133, packet134, packet135, packet136, packet137, packet138
-
+from info import * 
 
 # Write data to csv
 def write_csv(data):
     utctime = datetime.utcnow() # let file name be the utc time when its write (-m-d-h-m-s:month,day,hour,minute,sec)
-    file_time = str(utctime.month) + "m" + str(utctime.day) + "d" + str(utctime.hour) + "h" + str(utctime.minute) + "m" + str(utctime.second) + "s"
+    file_time = str(utctime.month) + "-" + str(utctime.day) + "-" + str(utctime.hour) + "-" + str(utctime.minute) + "-" + str(utctime.second)
     address = os.path.dirname(os.path.realpath('__file__')) + '/result/' + file_time + ".csv"
     with open(address, 'w') as file:
         writer = csv.writer(file)
@@ -29,6 +28,7 @@ def write_csv(data):
 # To save data to csv, the first argument shall be 1
 # Second argument shall give the data saving frequency (default 1 Hz)
 data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+data_list_n = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
 last_save_time = time.time()
 if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
     save_csv = True
@@ -90,7 +90,7 @@ servo1, servo2, servo3, servo4 = c_int(0), c_int(0), c_int(0), c_int(0)
 
 others_sysID, others_compID, others_commID = c_int(0), c_int(0), c_int(0)
 others_lat, others_lon, others_alt = c_int(0), c_int(0), c_int(0)
-others_vx, others_vy, others_vz, others_hdg, others_mode = c_int(0), c_int(0), c_int(0), c_int(0), c_int(255)
+others_vx, others_vy, others_vz, others_hdg, others_yaw, others_mode = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(255)
 others_gps_time, others_sys_time = c_int(0), c_int(0)
 
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
@@ -100,7 +100,7 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     131: packet131(),
     132: packet132(),
     133: packet133(),
-    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time),
+    134: packet134(sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, yaw, mode, gps_time),
     135: packet135(),
     136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_id),
     137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4),
@@ -207,7 +207,7 @@ while True:
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon = msg.lat_int, msg.lon_int
-        Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = msg.lat_int, msg.lon_int, msg.alt #degE7, degE7, m 
+        Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
         # print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
     # send out some pkts every 1 sec
@@ -323,6 +323,14 @@ while True:
                         guide_lon.append(b)
                     print('Finish Formation Calculation!', guide_lat, guide_lon)
 
+                    if save_csv:
+                        utctime = datetime.utcnow()
+                        data_list_wpt = [['time: '+str((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3)), 'Formation: '+str(pkt[131].Formation), 'LF: '+str(pkt[131].LF)]]
+                        data_list_wpt.append(['seq', 'lat', 'lon', 'alt'])
+                        for i in range(len(wp_x)):
+                            data_list_wpt.append([i, guide_lat[i], guide_lon[i], guide_alt[i]])
+                        write_csv(data_list_wpt)
+
                 
         elif received_msgID == 133:
             print(data[5], data)
@@ -393,14 +401,25 @@ while True:
 
         
         elif received_msgID == 134: # received v2v
-            others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value = pkt[received_msgID].unpackpkt(data)
+            print('1')
+            others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value = pkt[received_msgID].unpackpkt(data)
+            print('2')
             if others_sysID.value not in other_uavs:
+                print('not in')
                 other_uavs[others_sysID.value] = uav(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
+                print('not in 2')
             else:
+                print('else')
                 other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, others_lat.value/1e7, others_lon.value/1e7, others_alt.value)
-            pkt[130].calculated((dx**2 + dy**2)**0.5, hdg.value - others_hdg.value)
+            pkt[130].calculated((dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi))
             msgID_to_send.extend([130]) # send out v2g regarding neighboring info
+            
+            if save_csv and master.sysid_state[master.sysid].armed: 
+                utctime = datetime.utcnow()
+                data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
+                data_step.extend([others_sysID.value, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
+                data_list_n.append(data_step)
     except: pass
 
     # Continuously setting out set_mode/arm/disarm if the UAV did not react
@@ -478,6 +497,7 @@ while True:
 
             elif pkt[131].Formation == 1: # triangle
                 # if this uav is a follower, plan its desired location based on the leader's location
+                waypt_id.value = 0
                 dx, dy, dz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
                 ang = pkt[131].Angle*math.pi/180
                 if pkt[131].LF == 2: ang *= -1
@@ -490,6 +510,7 @@ while True:
 
             elif pkt[131].Formation == 2: # straight line
                 # if this uav is a follower, plan its desired location based on the leader's location
+                waypt_id.value = 0
                 dx, dy, dz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
                 des_x = dx + pkt[131].LF*pkt[131].Desired_dist*math.cos(math.pi+other_uavs[1].hdg)
                 des_y = dy + pkt[131].LF*pkt[131].Desired_dist*math.sin(math.pi+other_uavs[1].hdg)
@@ -511,4 +532,6 @@ while True:
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):
         write_csv(data_list)
         data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+        write_csv(data_list_n)
+        data_list_n = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
 

@@ -81,10 +81,10 @@ def ObjectiveFunction():
 
     F1, F2, F3, F4 = 0, 0, 0, 0
     for i in range(n):
-        xi, yi = uavs[i].ini_pos[0], uavs[i].ini_pos[1]
-        xc, yc = uavs[i].cur_pos[0], uavs[i].cur_pos[1]
-        xg, yg = uavs[i].des_pos[0], uavs[i].des_pos[1]
-        xn, yn = uavs[i].nxt_pos[0], uavs[i].nxt_pos[1]
+        xi, yi = uavs[i].ini_pos
+        xc, yc = uavs[i].cur_pos
+        xg, yg = uavs[i].des_pos
+        xn, yn = uavs[i].nxt_pos
         # F1 += ((xc-xn)**2 + (yc-yn)**2) + ((xn-xg)**2 + (yn-yg)**2)
         # F1 += ((xc-xn)**2 + (yc-yn)**2)**(0.5) + ((xn-xg)**2 + (yn-yg)**2)**(0.5)
         F1 += ((xn-xg)**2 + (yn-yg)**2)**(0.5)
@@ -101,16 +101,31 @@ def ObjectiveFunction():
         for j in range(n):
             if i!=j:
                 xn2, yn2 = uavs[j].nxt_pos[0], uavs[j].nxt_pos[1]
-                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2.0*uavs[i].r:
+                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 1.0*uavs[i].r:
                     F2 += 1e5
                 else:
                     F2 += 10.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 2.0*uavs[i].r)
+                # if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= uavs[i].r:
+                #     F2 += 1e5
+                # elif ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3*uavs[i].r:
+                #     if abs(xcg) <= 0.05 and abs(ycg) <= 0.05:
+                #         F2 += uavs[i].r/((xn-xn2)**2 + (yn-yn2)**2)**(0.5)
+                #     else:
+                #         vxn1, vyn1 = uavs[i].cur_vel
+                #         vxn2, vyn2 = uavs[j].cur_vel
+                #         nvxn1 = vxn1/math.sqrt(vxn1**2+vyn1**2)
+                #         nvyn1 = vyn1/math.sqrt(vxn1**2+vyn1**2)
+                #         nvxn2 = vxn2/math.sqrt(vxn2**2+vyn2**2)
+                #         nvyn2 = vyn2/math.sqrt(vxn2**2+vyn2**2)
+                #         if nvxn1*nvxn2 + nvyn1*nvyn2 >= 0:
+                #             F2 += uavs[i].r/((xn-xn2)**2 + (yn-yn2)**2)**(0.5)
                 if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
                     f3_bool = True
-        if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
-            F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))) # cos law for smoothness detection
+        if (2*pnc**0.5*png**0.5) != 0:
+            if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
+                F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))) # cos law for smoothness detection
 
-    return 1.0*F1 + 1.0*F2 + 0.0*F3 + 150.0*F4
+    return 1.0*F1 + 1.0*F2 + 0.0*F3 + 0.0*F4
 
 
 def pso(ptcle):
@@ -168,7 +183,7 @@ def pso(ptcle):
 if __name__ == '__main__':
 
     # random.seed(3)
-    np.random.seed(3)
+    # np.random.seed(3)
 
     # initialize
     rng = 30.0

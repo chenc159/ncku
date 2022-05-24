@@ -167,8 +167,8 @@ class info:
             255:   "None"
         }.get(num)
 
-class uav(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
+class uav_info(object):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, mode, gps_time, sys_time):
         # int
         self.sysID = sysID
         self.compID = compID
@@ -180,28 +180,28 @@ class uav(object):
         self.vx = vx
         self.vy = vy
         self.vz = vz
-        self.xacc = xacc
-        self.yacc = yacc
-        self.xgyro = xgyro
-        self.ygyro = ygyro
-        self.zgyro = zgyro
+        # self.xacc = xacc
+        # self.yacc = yacc
+        # self.xgyro = xgyro
+        # self.ygyro = ygyro
+        # self.zgyro = zgyro
         self.hdg = hdg
         self.mode = mode
         self.gps_time = gps_time
         self.sys_time = sys_time
 
-    def update(self, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
+    def update(self, lat, lon, alt, vx, vy, vz, hdg, mode, gps_time, sys_time):
         self.lat = lat
         self.lon = lon
         self.alt = alt
         self.vx = vx
         self.vy = vy
         self.vz = vz
-        self.xacc = xacc
-        self.yacc = yacc
-        self.xgyro = xgyro
-        self.ygyro = ygyro
-        self.zgyro = zgyro
+        # self.xacc = xacc
+        # self.yacc = yacc
+        # self.xgyro = xgyro
+        # self.ygyro = ygyro
+        # self.zgyro = zgyro
         self.hdg = hdg
         self.mode = mode
         self.gps_time = gps_time
@@ -478,13 +478,6 @@ class packet134(object):
         self.gps_time = gps_time
 
     def packpkt(self):
-        # a = pack('<BBBBiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
-        #             self.lat.value, self.lon.value, self.alt.value,
-        #             self.vx.value, self.vy.value, self.vz.value,
-        #             self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
-        #             self.hdg.value, self.yaw.value, self.mode.value, self.gps_time.value)
-        # print('a',len(a))
-        # return a
         return pack('<BBBBiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
                     self.lat.value, self.lon.value, self.alt.value,
                     self.vx.value, self.vy.value, self.vz.value,

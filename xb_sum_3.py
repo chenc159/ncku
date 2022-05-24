@@ -218,7 +218,7 @@ while True:
         msgID_to_send.extend([128, 134, 136, 137])
         last_sent_time = time.time()
 
-    if (time.time() - last_seq_sent_time) >= 0.3: # 0.3 sec may lost packet, 1 sec won't
+    if (time.time() - last_seq_sent_time) >= 1.0: # 0.3 sec may lost packet, 1 sec won't
         # sent out pixhawk mission info 
         if (missionseq2gcs < len(pkt[132].Mission_alt)):
             pkt[138].save_data(missionseq2gcs, pkt[132].Mission_modes[missionseq2gcs], pkt[132].Mission_lat[missionseq2gcs], pkt[132].Mission_lon[missionseq2gcs], pkt[132].Mission_alt[missionseq2gcs])
@@ -232,7 +232,8 @@ while True:
 
     
     # Send packet
-    msgID_to_send = set(msgID_to_send) # remove duplicate pkt 
+    if (len(list(msgID_to_send)) != 0):
+        msgID_to_send = set(msgID_to_send) # remove duplicate pkt 
     for i in msgID_to_send:
         pkt_bytearray = bytearray([255])
         pkt_bytearray.extend(pkt[i].packpkt()) # pack the pkt info
@@ -250,7 +251,9 @@ while True:
             try: xbee001.send_data(remote002,pkt_bytearray)
             except: pass
         # print(i, pkt_bytearray)
-    msgID_to_send = [] # reset pkt-to-send list
+    if (len(list(msgID_to_send)) != 0):
+        print('MsgID_to_send: ', msgID_to_send)
+        msgID_to_send = [] # reset pkt-to-send list
 
     
     # Read packet
@@ -401,15 +404,10 @@ while True:
 
         
         elif received_msgID == 134: # received v2v
-            print('1')
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value = pkt[received_msgID].unpackpkt(data)
-            print('2')
             if others_sysID.value not in other_uavs:
-                print('not in')
-                other_uavs[others_sysID.value] = uav(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
-                print('not in 2')
+                other_uavs[others_sysID.value] = uav_info(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             else:
-                print('else')
                 other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, others_lat.value/1e7, others_lon.value/1e7, others_alt.value)
             pkt[130].calculated((dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi))

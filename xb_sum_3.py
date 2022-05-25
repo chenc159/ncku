@@ -222,7 +222,7 @@ while True:
         # delete overtimed neighbor - did not received its msg for more than 5 sec
         utctime = datetime.utcnow()
         cur_sys_time = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
-        for n_id in other_uavs:
+        for n_id in other_uavs.copy():
             if (cur_sys_time - other_uavs[n_id].sys_time >= 5000):
                 other_uavs.pop(n_id)
 

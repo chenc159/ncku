@@ -404,7 +404,7 @@ while True:
             elif (pkt[received_msgID].mode_arm == 18): # Formation_start: start guided mission
                 # waypt_id.value = 1
                 Formation_start = True
-                print('Formation flight STARTED!')
+                print('Formation flight STARTED! Lat: ', guide_lat)
             elif (pkt[received_msgID].mode_arm == 19): # Formation stop: stop guided mission
                 Formation_stop = True
                 stop_lat, stop_lon, stop_alt = lat.value, lon.value, alt.value
@@ -444,17 +444,20 @@ while True:
 
     if (master.flightmode == 'GUIDED'):
         # Collision avoidance above all
+        col_avoid = False
         if pkt[131].LF != 0:
             for n_id in other_uavs:
                 if n_id < sysID:
                     dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, 10, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, 10)
-                    if (dx**2 + dy**2)**0.5 < pkt[131].Desired_dist:
-                        print('Collision Avoidance !!!', sysID, n_id)
-                        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                            lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0)) 
-                        # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
-                        #     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) 
+                    if (dx**2 + dy**2)**0.5 < pkt[131].Desired_dist:  
+                        col_avoid = True
                         break
+        if col_avoid:
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
+                            lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0)) 
+            # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
+            #     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) 
+            print('Collision Avoidance !!!', sysID, n_id)
         # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
         elif Mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
             des_lat, des_lon, des_alt = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value]
@@ -515,6 +518,7 @@ while True:
                 des_x = dx + pkt[131].Desired_dist*math.cos(math.pi+other_uavs[1].hdg+ang)
                 des_y = dy + pkt[131].Desired_dist*math.sin(math.pi+other_uavs[1].hdg+ang)
                 des_lat, des_lon, des_alt = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)
+                des_lat, des_lon, des_alt = int(des_lat*1e7), int(des_lon*1e7), int(des_alt)
                 if (des_lat != target_lat) or (des_lon != target_lon):
                     print('Guided mission command sending out (Follower/Triangle): ', des_lat, des_lon, des_alt)
                     master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
@@ -527,6 +531,7 @@ while True:
                 des_x = dx + pkt[131].LF*pkt[131].Desired_dist*math.cos(math.pi+other_uavs[1].hdg)
                 des_y = dy + pkt[131].LF*pkt[131].Desired_dist*math.sin(math.pi+other_uavs[1].hdg)
                 des_lat, des_lon, des_alt = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)
+                des_lat, des_lon, des_alt = int(des_lat*1e7), int(des_lon*1e7), int(des_alt)
                 if (des_lat != target_lat) or (des_lon != target_lon):
                     print('Guided mission command sending out (Follower/SL): ', des_lat, des_lon, des_alt)
                     master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 

@@ -138,7 +138,6 @@ Mission_guided, Formation_start, Formation_stop = False, False, False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
 missionseq2gcs, wayptseq2gcs = 99, 99
 other_uavs = {}
-last_clr_neighbor_time = 0
 
 while True:
     try:
@@ -212,9 +211,6 @@ while True:
         Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
         # print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
-    if (time.time() - last_clr_neighbor_time) >= 10.0:
-        other_uavs = {}
-        last_clr_neighbor_time = time.time()
 
     # send out some pkts every 1 sec
     if (time.time() - last_sent_time) >= 1.0: 
@@ -223,6 +219,14 @@ while True:
         hdg.value = int(math.atan2(dy, dx)*180/math.pi)
         msgID_to_send.extend([128, 134, 136, 137])
         last_sent_time = time.time()
+        # delete overtimed neighbor - did not received its msg for more than 5 sec
+        utctime = datetime.utcnow()
+        cur_sys_time = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
+        for n_id in other_uavs:
+            if (cur_sys_time - other_uavs[n_id].sys_time >= 5000):
+                other_uavs.pop(n_id)
+
+
 
     if (time.time() - last_seq_sent_time) >= 1.0: # 0.3 sec may lost packet, 1 sec won't
         # sent out pixhawk mission info 
@@ -468,13 +472,10 @@ while True:
                                 stop_lat, stop_lon, stop_alt/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
 
         elif Formation_start and len(guide_lat)!=0:
-            utctime = datetime.utcnow()
-            self_fly = False
+            self_fly = True # uav use the pre-calculated path (not folowing the leader)
             if (1 in other_uavs):
-                cur_sys_time = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
-                if (other_uavs[1].mode != 4) or (cur_sys_time - other_uavs[1].sys_time <= 5000): # undelected for more than five sec
-                    self_fly = True # leader not in guided mode or did not receive leader's info for more than 5 sec
-            else: True # Follower follow the the pre-calculated path (fly without leader) if there is no leader detected or (see 1 line above)
+                if (other_uavs[1].mode == 4):
+                    self_fly = False # if the leader is detected and it is in guided mode, the uav follows the leader
             if pkt[131].LF == 0: 
                 # if this uav is the leader, just follow the pre-planned path
                 des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]
@@ -487,8 +488,8 @@ while True:
                     waypt_id.value += 1
 
             elif self_fly:
-                # leader not in guided mode or did not receive leader's info for more than 5 sec
-                # use the pre-calculated path ... fly without leader
+                # leader undetected or not in guided mode
+                # Follower follow the the pre-calculated path (fly without leader)
                 if waypt_id.value == 0: # try to find out which waypt the uav shall start following
                     dis = 9999
                     for i in range(len(guide_lat)):

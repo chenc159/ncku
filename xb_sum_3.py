@@ -25,6 +25,7 @@ def write_csv(data):
         writer = csv.writer(file)
         writer.writerows(data)
     print(address + " saved!!")
+    time.sleep(1)
 
 # To save data to csv, the first argument shall be 1
 # Second argument shall give the data saving frequency (default 1 Hz)
@@ -133,6 +134,7 @@ print('Done downloading preloaded mission.')
 target_lat, target_lon = 0.0, 0.0
 stop_lat, stop_lon, stop_alt = 0.0, 0.0, 0
 guide_lat, guide_lon, guide_alt = [], [], []
+last_mavguide_time = 0
 last_sent_time, last_seq_sent_time, msgID_to_send = 0, 0, [] 
 Mission_guided, Formation_start, Formation_stop = False, False, False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
@@ -431,7 +433,7 @@ while True:
     except: pass
 
     # Continuously setting out set_mode/arm/disarm if the UAV did not react
-    if send_cmd and (time.time() - last_cmd_time < 3.0) and (time.time() - last_cmd_send_time > 0.25):
+    if send_cmd and (time.time() - last_cmd_time < 3.0) and (time.time()-last_cmd_send_time > 0.25):
         last_cmd_send_time = time.time()
         if (pkt[133].mode_arm < 10): # disarm
             if (pkt[133].mode_arm == 8): # convert position mode number
@@ -442,7 +444,7 @@ while True:
         elif (pkt[133].mode_arm == 11): # disarm
             master.arducopter_disarm()
 
-    if (master.flightmode == 'GUIDED'):
+    if (master.flightmode == 'GUIDED') and (time.time()-last_mavguide_time > 0.25):
         # Collision avoidance above all
         col_avoid = False
         if pkt[131].LF != 0:
@@ -536,7 +538,7 @@ while True:
                     print('Guided mission command sending out (Follower/SL): ', des_lat, des_lon, des_alt)
                     master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                                 des_lat, des_lon, guide_alt[0], 0, 0, 0, 0, 0, 0, 0, 0))
-
+        last_mavguide_time = time.time()
            
     # Save data to memory
     if save_csv and master.sysid_state[master.sysid].armed and (time.time() - last_save_time >= 1/save_freq):

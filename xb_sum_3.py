@@ -79,7 +79,7 @@ while not msg:
 print("RAW_IMU received")
 
 
-# Initialize parameters
+# Initialize parameters and packets
 sysID, compID, commID = master.target_system, master.target_component, 22
 gps_time = c_int(0)
 roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro = c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0), c_int(0)  
@@ -140,6 +140,8 @@ Mission_guided, Formation_start, Formation_stop = False, False, False
 last_cmd_time, send_cmd, confirmation = 0, False, 0
 missionseq2gcs, wayptseq2gcs = 99, 99
 other_uavs = {}
+ca_lat, ca_lon, ca_alt = 0.0, 0.0, 0
+col_avoid, ca_enable = False, False # col_avoid: if ca is needed; ca_enable: cmd from packet/gcs 
 
 while True:
     try:
@@ -348,7 +350,7 @@ while True:
 
                 
         elif received_msgID == 133:
-            print(data[5], data)
+            print('CMD from 133 Packet: ', data[5])
             pkt[received_msgID].unpackpkt(data)
             Mission_guided, Formation_start, Formation_stop = False, False, False
             if (pkt[received_msgID].mode_arm <= 11): # set_mode, arm, disarm
@@ -359,7 +361,7 @@ while True:
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, confirmation, 0, 0, 0, 0, 0, 0, takeoff_alt)
             elif (pkt[received_msgID].mode_arm == 13): # mission start
                 master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, confirmation, 0, 0, 0, 0, 0, 0, 0)
-            elif (pkt[received_msgID].mode_arm == 14): # mission with guided mode (change this to "send", then continue with start ... and note stop)
+            elif (pkt[received_msgID].mode_arm == 14): # mission with guided mode
                 waypt_id.value = 0
                 if (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
                     # Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value]
@@ -402,9 +404,8 @@ while True:
                 waypt_id.value = 0
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                         guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value], 0, 0, 0, 0, 0, 0, 0, 0))
-                 #  send first point
+                print('Formation first point sent!')
             elif (pkt[received_msgID].mode_arm == 18): # Formation_start: start guided mission
-                # waypt_id.value = 1
                 Formation_start = True
                 print('Formation flight STARTED! Lat: ', guide_lat)
             elif (pkt[received_msgID].mode_arm == 19): # Formation stop: stop guided mission
@@ -413,6 +414,12 @@ while True:
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                         lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
                 print('Formation flight STOPPED!')
+            elif (pkt[received_msgID].mode_arm == 20): # Eable collision avoidance capability
+                ca_enable = True
+                print('Enable CA!')
+            elif (pkt[received_msgID].mode_arm == 21): # Disable collision avoidance capability
+                ca_enable = False
+                print('Disable CA!')
 
         
         elif received_msgID == 134: # received v2v
@@ -445,21 +452,25 @@ while True:
             master.arducopter_disarm()
 
     if (master.flightmode == 'GUIDED') and (time.time()-last_mavguide_time > 0.25):
-        # Collision avoidance above all
-        col_avoid = False
-        if pkt[131].LF != 0:
-            for n_id in other_uavs:
-                if n_id < sysID:
+        # Collision avoidance (CA) above all
+        col_avoid_temp = False # to check for this iteration 
+        if ca_enable and pkt[131].LF != 0: # only non-leader uav need to CA
+            for n_id in other_uavs: # check the neighbors
+                if n_id < sysID: # check if the neighbor has higher precedence (lower id number)
                     dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, 10, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, 10)
                     if (dx**2 + dy**2)**0.5 < pkt[131].Desired_dist:  
-                        col_avoid = True
+                        col_avoid_temp = True
+                        if col_avoid != True: # remember the current location. If continous CA, use the location of the initial CA.
+                            ca_lat, ca_lon, ca_alt = lat.value, lon.value, alt.value
                         break
+        if not col_avoid_temp:
+            col_avoid = False
         if col_avoid:
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                            lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0)) 
+                            ca_lat, ca_lon, ca_alt/1e3, 0, 0, 0, 0, 0, 0, 0, 0)) 
             # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
             #     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) 
-            print('Collision Avoidance !!!', sysID, n_id)
+            print('Collision Avoidance !!! UAVs: ', sysID, n_id)
         # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
         elif Mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
             des_lat, des_lon, des_alt = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value]
@@ -481,6 +492,7 @@ while True:
             if (1 in other_uavs):
                 if (other_uavs[1].mode == 4):
                     self_fly = False # if the leader is detected and it is in guided mode, the uav follows the leader
+            
             if pkt[131].LF == 0: 
                 # if this uav is the leader, just follow the pre-planned path
                 des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]

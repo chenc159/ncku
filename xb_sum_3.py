@@ -131,7 +131,7 @@ while (seq < count): # Get mission item
 print('Done downloading preloaded mission.')
 
 # some parameter initialization
-target_lat, target_lon = 0.0, 0.0
+target_lat, target_lon, target_alt, target_yaw = 0.0, 0.0, 0.0, 0.0
 stop_lat, stop_lon, stop_alt = 0.0, 0.0, 0
 guide_lat, guide_lon, guide_alt = [], [], []
 last_mavguide_time = 0
@@ -211,7 +211,7 @@ while True:
         servo1.value, servo2.value, servo3.value, servo4.value = msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
-        target_lat, target_lon = msg.lat_int, msg.lon_int
+        target_lat, target_lon, target_alt, target_yaw = msg.lat_int, msg.lon_int, msg.alt, msg.yaw
         Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
         # print('POSITION_TARGET_GLOBAL_INT lat, lon, alt: ', msg.lat_int, msg.lon_int, msg.alt)
 
@@ -497,9 +497,9 @@ while True:
                 # if this uav is the leader, just follow the pre-planned path
                 des_lat, des_lon, des_alt = guide_lat[waypt_id.value], guide_lon[waypt_id.value], guide_alt[waypt_id.value]
                 if (des_lat != target_lat) or (des_lon != target_lon):
-                    print('Guided mission command sending out (Leader): ', des_lat, des_lon, des_alt)
+                    print('Guided mission command sending out (Leader): ', des_lat, des_lon, des_alt, hdg.value*math.pi/180)
                     master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
-                            des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                            des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, hdg.value*math.pi/180, 0))
                 dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
                 if (waypt_id.value < len(guide_lat) - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
                     waypt_id.value += 1

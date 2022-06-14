@@ -458,7 +458,7 @@ while True:
             for n_id in other_uavs: # check the neighbors
                 if n_id < sysID: # check if the neighbor has higher precedence (lower id number)
                     dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, 10, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, 10)
-                    if (dx**2 + dy**2)**0.5 < pkt[131].Desired_dist:  
+                    if (dx**2 + dy**2)**0.5 < (pkt[131].Desired_dist/2): # CA radius is half of the desired radius of formation  
                         col_avoid_temp = True
                         if col_avoid != True: # remember the current location. If continous CA, use the location of the initial CA.
                             ca_lat, ca_lon, ca_alt = lat.value, lon.value, alt.value

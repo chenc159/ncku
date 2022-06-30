@@ -168,7 +168,7 @@ class info:
         }.get(num)
 
 class uav_info(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, hdg, mode, gps_time, sys_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
         # int
         self.sysID = sysID
         self.compID = compID
@@ -182,15 +182,15 @@ class uav_info(object):
         self.vz = vz
         # self.xacc = xacc
         # self.yacc = yacc
-        # self.xgyro = xgyro
-        # self.ygyro = ygyro
-        # self.zgyro = zgyro
+        self.xgyro = xgyro
+        self.ygyro = ygyro
+        self.zgyro = zgyro
         self.hdg = hdg
         self.mode = mode
         self.gps_time = gps_time
         self.sys_time = sys_time
 
-    def update(self, lat, lon, alt, vx, vy, vz, hdg, mode, gps_time, sys_time):
+    def update(self, lat, lon, alt, vx, vy, vz, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
         self.lat = lat
         self.lon = lon
         self.alt = alt
@@ -199,9 +199,9 @@ class uav_info(object):
         self.vz = vz
         # self.xacc = xacc
         # self.yacc = yacc
-        # self.xgyro = xgyro
-        # self.ygyro = ygyro
-        # self.zgyro = zgyro
+        self.xgyro = xgyro
+        self.ygyro = ygyro
+        self.zgyro = zgyro
         self.hdg = hdg
         self.mode = mode
         self.gps_time = gps_time
@@ -314,7 +314,7 @@ class packet130(object):
                      self.relative_dist, self.relative_ang, self.others_gps_time.value)
 
 class packet136(object):
-    def __init__(self, sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, waypt_seq):
+    def __init__(self, sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, Dyn_vx, Dyn_vy, Dyn_yaw, Dyn_yawr, waypt_seq):
         # int
         self.msgID = 136
         self.sysID = sysID
@@ -323,11 +323,16 @@ class packet136(object):
         # c_int
         self.Dyn_waypt_lat = Dyn_waypt_lat
         self.Dyn_waypt_lon = Dyn_waypt_lon
+        self.Dyn_vx = Dyn_vx
+        self.Dyn_vy = Dyn_vy
+        self.Dyn_yaw = Dyn_yaw
+        self.Dyn_yawr = Dyn_yawr
         self.waypt_seq = waypt_seq
 
     def packpkt(self):
-        return pack('<BBBBiii', self.msgID, self.sysID, self.compID, self.commID, 
-                    self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.waypt_seq.value)
+        return pack('<BBBBiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+                    self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.Dyn_vx.value, self.Dyn_vu.value,
+                    self.Dyn_yaw.value, self.Dyn_yawr.value, self.waypt_seq.value)
 
 class packet137(object):
     def __init__(self, sysID, compID, commID, servo1, servo2, servo3, servo4):
@@ -507,4 +512,4 @@ class packet134(object):
         # print(len(data))
         # print(unpack('i',data[65:69])[0])
         self.others_sys_time = unpack('i',data[65:69])[0]
-        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_hdg, self.others_yaw, self.others_mode, self.others_gps_time, self.others_sys_time
+        return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_xgyro, self.others_ygyro, self.others_zgyro, self.others_hdg, self.others_yaw, self.others_mode, self.others_gps_time, self.others_sys_time

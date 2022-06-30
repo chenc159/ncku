@@ -54,8 +54,7 @@ def triangle_straight(ts, id, Desired_dist, Radius, Angle, Waypt_num, x, y):
                 # wp_x122.extend([wp_x[i]+2*Desired_dist*math.cos(math.pi+heading)])
                 # wp_y122.extend([wp_y[i]+2*Desired_dist*math.sin(math.pi+heading)])
             return wp_x12, wp_y12
-
-
+    
     # # Plotting
     # fig = plt.figure(1)
     # norm = colors.Normalize(vmin=0, vmax=4)
@@ -72,10 +71,36 @@ def triangle_straight(ts, id, Desired_dist, Radius, Angle, Waypt_num, x, y):
     # plt.legend(['uav1', 'uav2', 'uav3'])
     # plt.show()
 
-triangle_straight(2,2,2,5, 60, 30,[0,10,10], [0,0,10])
+def points_L2F(ts, id, Desired_dist, Angle, Lx, Ly, heading):
+    if ts == 1: # triangle formation
+        ang = Angle*math.pi/180
+        if id == 2: ang *= -1
+        Fx = Lx + Desired_dist*math.cos(math.pi+heading+ang)
+        Fy = Ly + Desired_dist*math.sin(math.pi+heading+ang)
+        return Fx, Fy
+    elif ts == 2: # straight line formation
+        Fx = Lx+id*Desired_dist*math.cos(math.pi+heading)
+        Fy = Ly+id*Desired_dist*math.sin(math.pi+heading)
+        return Fx, Fy
 
 
+# triangle_straight(2,2,2,5, 60, 30,[0,10,10], [0,0,10])
 
+# # Test points_L2F
+# x0, y0 = 2, 5
+# x1, y1 = points_L2F(1,1,5,60,x0,y0,0)
+# x2, y2 = points_L2F(1,2,5,60,x0,y0,0)
+# fig = plt.figure(1)
+# norm = colors.Normalize(vmin=0, vmax=4)
+# plt.scatter(x0, y0, color = cm.hsv(norm(1)))
+# plt.scatter(x1, y1, color = cm.hsv(norm(2)))
+# plt.scatter(x2, y2, color = cm.hsv(norm(3)))
+# plt.grid()
+# plt.xlabel('X')
+# plt.ylabel('Y')
+# plt.axis('equal')
+# plt.legend(['uav1', 'uav2', 'uav3'])
+# plt.show()
 
 
 

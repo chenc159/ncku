@@ -331,7 +331,7 @@ class packet136(object):
 
     def packpkt(self):
         return pack('<BBBBiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
-                    self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.Dyn_vx.value, self.Dyn_vu.value,
+                    self.Dyn_waypt_lat.value, self.Dyn_waypt_lon.value, self.Dyn_vx.value, self.Dyn_vy.value,
                     self.Dyn_yaw.value, self.Dyn_yawr.value, self.waypt_seq.value)
 
 class packet137(object):

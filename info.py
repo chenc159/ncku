@@ -453,9 +453,11 @@ class packet133(object):
 
 class packet135(object):
     def __init__(self):
-        self.write = 0
+        self.item = 0
+        self.param = 0
     def unpackpkt(self, data):
-        self.write = data[5]
+        self.item = data[5]
+        self.param = data[6]
 
 '''UAV 2 UAV'''
 class packet134(object):

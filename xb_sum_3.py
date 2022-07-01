@@ -486,6 +486,19 @@ while True:
                 data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
                 data_step.extend([others_sysID.value, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
                 data_list_n.append(data_step)
+        
+        elif received_msgID == 134: # received some parameters
+            if (pkt[received_msgID].item == 1):
+                v2v_hz = pkt[received_msgID].param
+            elif (pkt[received_msgID].item == 2):
+                k_v = pkt[received_msgID].param
+            elif (pkt[received_msgID].item == 3):
+                k_yawr = pkt[received_msgID].param
+            elif (pkt[received_msgID].item == 4):
+                max_v = pkt[received_msgID].param
+            elif (pkt[received_msgID].item == 5):
+                max_yawr = pkt[received_msgID].param
+
     except: pass
 
     # Continuously setting out set_mode/arm/disarm if the UAV did not react

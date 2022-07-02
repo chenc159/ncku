@@ -135,7 +135,7 @@ print('Done downloading preloaded mission.')
 
 # some parameter initialization
 target_lat, target_lon, target_alt, target_yaw = 0.0, 0.0, 0.0, 0.0
-pos_vel_cmd, yaw_yawr_cmd = 0 # SET_POSITION_TARGET_GLOBAL_INT cmd, 0: none, 1: pos/yaw, 2: vel/yawr
+pos_vel_cmd, yaw_yawr_cmd = 0, 0 # SET_POSITION_TARGET_GLOBAL_INT cmd, 0: none, 1: pos/yaw, 2: vel/yawr
 stop_lat, stop_lon, stop_alt = 0.0, 0.0, 0
 guide_lat, guide_lon, guide_alt = [], [], []
 last_mavguide_time = 0

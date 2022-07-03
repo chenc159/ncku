@@ -564,10 +564,10 @@ while True:
                 des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
                 a, b, c = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)  
                 Dyn_waypt_lat, Dyn_waypt_lon = int(a*1e7), int(b*1e7)
-                vx = other_uavs[1].vx/100 + k_v * des_y # v:ned (cm/s -> m/s), des:enu, so need to switch direction
-                vy = other_uavs[1].vy/100 + k_v * des_x
-                vx = max(min(vx, max_v), -max_v)
-                vy = max(min(vy, max_v), -max_v)
+                vx_f = other_uavs[1].vx/100 + k_v * des_y # v:ned (cm/s -> m/s), des:enu, so need to switch direction
+                vy_f = other_uavs[1].vy/100 + k_v * des_x
+                vx_f = max(min(vx, max_v), -max_v)
+                vy_f = max(min(vy, max_v), -max_v)
                 # get desired yaw rate
                 des_yaw_change = other_uavs[1].hdg - hdg.value
                 if des_yaw_change > 180:
@@ -579,7 +579,7 @@ while True:
                 # send out cmd
                 pos_vel_cmd, yaw_yawr_cmd = 2, 2
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b101111100011), 
-                        0, 0, guide_alt[0], vx, vy, 0, 0, 0, 0, 0, des_yawr))
+                        0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
             '''
             if pkt[131].LF == 0: 
                 # if this uav is the leader, just follow the pre-planned path

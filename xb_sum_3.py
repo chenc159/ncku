@@ -584,11 +584,11 @@ while True:
                 des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
                 # send out cmd
                 pos_vel_cmd, yaw_yawr_cmd = 2, 2
-                print(vx_f, vy_f, des_yawr)
-                # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
-                #         0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
-                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
-                        0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, 0))                                                #0b110111000111
+                print('vx, vy, yr: ', vx_f, vy_f, des_yawr)
+                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
+                        0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
+                # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
+                #         0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, 0))                                                #0b110111000111
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                 #                 Dyn_waypt_lat.value, Dyn_waypt_lon.value, 10000/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 1, int(0b110111000111), 

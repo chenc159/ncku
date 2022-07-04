@@ -130,11 +130,16 @@ while True:
                 if (command != msg.command) or (result != msg.result):
                     command, result = msg.command, msg.result
                 print("COMMAND_ACK: ", command, result)
+            elif msg_type =='POSITION_TARGET_GLOBAL_INT':
+                print(msg)
+            # elif msg_type =='POSITION_TARGET_LOCAL_NED':
+            #     print("HERE!!!!!!!!!!!!!!!")
             elif msg_type == "SERVO_OUTPUT_RAW":
                 # print(msg)
                 pass
 
             # print("\n", msg)
+            # print(msg_type)
             # print('sys, imu, gps, gpsacc: ', SYS_time, IMU_time_boot, GPS_time_usec, GPSACC_time_boot)
             # print('sysgps_time: ', datetime.utcfromtimestamp(sysgps_time/1e6)) # day, hour, minute, second, microsecond
             # print('rpy: ', roll, pitch, yaw)
@@ -213,6 +218,38 @@ while True:
                 elif int(input_command) == 14:
                     master.mav.command_long_send(sysID, compID, mavutil.mavlink.MAV_CMD_MISSION_START, 0, 0, 0, 0, 0, 0, 0, 0)
                     print('mission start!')
+
+                elif int(input_command) == 15: # position 
+                    print('position cmd sent 1')
+                    for i in range(5):
+                        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111111000), 
+                                        18, 220, 1, 0, 0, 0, 0, 0, 0, 9, 9))
+                        # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111000000), 
+                        #                 24, 120, 10, 0, 0, 0, 0, 0, 0, 0, 9))
+                        # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010000111000), 
+                        #                 24, 120, 10, 0, 0, 0, 9, 8, 7, 0, 9))
+                    print('position cmd sent')
+                                
+                elif int(input_command) == 16: # velocity 
+                    # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
+                    #         0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
+                    for i in range(50):
+                        # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
+                        #         0, 0, 0, 9, 8, 0, 0, 0, 0, 0, 0))    
+                        # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100111), 
+                        #         0, 0, 0, 0.9, 0.8, 0, 0, 0, 0, 0, 0))    
+                        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111000000), 
+                                0, 0, 0, 0.9, 0.8, 0, 0, 0, 0, 0, 0))                                                #0b110111000111
+                    # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 1, int(0b110111000111), 
+                    #                 0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, 0))
+                    
+                    print('velocity cmd sent')
+                
+                elif int(input_command) == 17: # acceleration 
+                    for i in range(50):
+                        master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110000111111), 
+                                0, 0, 0, 0, 0, 0, 9, 8, 0, 0, 0))                                                #0b110111000111
+                    print('acceleration cmd sent')
 
                 elif int(input_command) == 99:
                     if save_csv:

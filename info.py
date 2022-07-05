@@ -290,8 +290,8 @@ class packet130(object):
         self.msgID = 130
         self.sysID = sysID
         # c_int
-        self.others_sysID = others_sysID
-        self.others_commID = others_commID
+        # self.others_sysID = others_sysID
+        # self.others_commID = others_commID
         self.others_lat = others_lat
         self.others_lon = others_lon
         self.others_alt = others_alt
@@ -299,19 +299,23 @@ class packet130(object):
         self.others_vy = others_vy
         self.others_vz = others_vz
         self.others_hdg = others_hdg
-        self.others_gps_time = others_gps_time
     
-    def calculated(self, relative_dist, relative_ang):
+    def calculated(self, others_sysID, others_commID, relative_dist, relative_ang, others_gps_time):
+        self.others_sysID = others_sysID
+        self.others_commID = others_commID
         self.relative_dist = int(relative_dist)
         self.relative_ang = int(relative_ang)
+        self.others_gps_time = others_gps_time
 
     def packpkt(self):
         # return pack('<BBBBiiiiiiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
         #              self.others_lat.value, self.others_lon.value, self.others_alt.value, 
         #              self.others_vx.value, self.others_vy.value, self.others_vz.value, 
         #              self.others_hdg.value, self.others_gps_time.value)
-        return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID.value, self.others_commID.value,
-                     self.relative_dist, self.relative_ang, self.others_gps_time.value)
+        # print(self.others_sysID, self.others_commID,
+        #              self.relative_dist, self.relative_ang, self.others_gps_time)
+        return pack('<BBBBiii', self.msgID, self.sysID, self.others_sysID, self.others_commID,
+                     self.relative_dist, self.relative_ang, self.others_gps_time)
 
 class packet136(object):
     def __init__(self, sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, Dyn_vx, Dyn_vy, Dyn_yaw, Dyn_yawr, waypt_seq):

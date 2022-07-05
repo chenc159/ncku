@@ -147,7 +147,7 @@ missionseq2gcs, wayptseq2gcs = 99, 99
 other_uavs = {}
 ca_lat, ca_lon, ca_alt = 0.0, 0.0, 0
 col_avoid, ca_enable = False, False # col_avoid: if ca is needed; ca_enable: cmd from packet/gcs 
-max_v, max_yawr, k_v, k_yawr = 6.0, 60, 0.5, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
+max_v, max_yawr, k_v, k_yawr = 6.0, 90, 0.5, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
 
 while True:
     try:
@@ -274,7 +274,7 @@ while True:
                     other_uavs.pop(n_id)
                 else:
                     dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, other_uavs[n_id].alt)
-                    pkt[130].calculated((dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi))
+                    pkt[130].calculated(other_uavs[n_id].sysID, other_uavs[n_id].commID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi), other_uavs[n_id].gps_time)
                     pkt_bytearray = bytearray([255])
                     pkt_bytearray.extend(pkt[130].packpkt()) # pack the pkt info
                     # store computer system time and gps time
@@ -308,7 +308,7 @@ while True:
         received = xbee001.read_data()
         data = received.data
         received_msgID = data[1]
-        # print('Received id: ', received_msgID)
+        print('Received id: ', received_msgID)
         
         if received_msgID == 131:
             pkt[received_msgID].unpackpkt(data)
@@ -493,13 +493,15 @@ while True:
                 data_step.extend([others_sysID.value, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
                 data_list_n.append(data_step)
         
-        elif received_msgID == 134: # received some parameters
+        elif received_msgID == 135: # received some parameters
+            pkt[received_msgID].unpackpkt(data)
+            print('Change parameter (item id/param): ', pkt[received_msgID].item, pkt[received_msgID].param)
             if (pkt[received_msgID].item == 1):
                 v2v_hz = pkt[received_msgID].param
             elif (pkt[received_msgID].item == 2):
-                k_v = pkt[received_msgID].param
+                k_v = pkt[received_msgID].param/10
             elif (pkt[received_msgID].item == 3):
-                k_yawr = pkt[received_msgID].param
+                k_yawr = pkt[received_msgID].param/10
             elif (pkt[received_msgID].item == 4):
                 max_v = pkt[received_msgID].param
             elif (pkt[received_msgID].item == 5):
@@ -584,7 +586,7 @@ while True:
                 des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
                 # send out cmd
                 pos_vel_cmd, yaw_yawr_cmd = 2, 2
-                print('vx, vy, yr: ', vx_f, vy_f, des_yawr)
+                print('vx, vy, yr cmd: ', vx_f, vy_f, des_yawr)
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
                         0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 

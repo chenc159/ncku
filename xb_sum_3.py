@@ -282,6 +282,8 @@ while True:
                     # calculae checksum
                     chks.accumulate(pkt_bytearray[:]) 
                     pkt_bytearray.extend(pack('H', chks.crc))
+                    try: xbee001.send_data(remote002,pkt_bytearray)
+                    except: pass
         else:
             pkt_bytearray = bytearray([255])
             pkt_bytearray.extend(pkt[i].packpkt()) # pack the pkt info
@@ -290,13 +292,13 @@ while True:
             # calculae checksum
             chks.accumulate(pkt_bytearray[:]) 
             pkt_bytearray.extend(pack('H', chks.crc))
-        # send by xbee
-        if i == 134: # xbee broadcast v2v data
-            try: xbee001.send_data_broadcast(pkt_bytearray)
-            except: pass
-        else: # v2g data (with ground xbee address)
-            try: xbee001.send_data(remote002,pkt_bytearray)
-            except: pass
+            # send by xbee
+            if i == 134: # xbee broadcast v2v data
+                try: xbee001.send_data_broadcast(pkt_bytearray)
+                except: pass
+            else: # v2g data (with ground xbee address)
+                try: xbee001.send_data(remote002,pkt_bytearray)
+                except: pass
         # print(i, pkt_bytearray)
     if (len(list(msgID_to_send)) != 0):
         # print('MsgID_to_send: ', msgID_to_send)

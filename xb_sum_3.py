@@ -17,22 +17,24 @@ from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddre
 from info import * 
 
 # Write data to csv
-def write_csv(data):
+def write_csv(data, no):
     utctime = datetime.utcnow() # let file name be the utc time when its write (-m-d-h-m-s:month,day,hour,minute,sec)
-    file_time = str(utctime.month) + "-" + str(utctime.day) + "-" + str(utctime.hour) + "-" + str(utctime.minute) + "-" + str(utctime.second)
+    file_time = str(no) + "--" + str(utctime.month) + "-" + str(utctime.day) + "-" + str(utctime.hour) + "-" + str(utctime.minute) + "-" + str(utctime.second)
     address = os.path.dirname(os.path.realpath('__file__')) + '/result/' + file_time + ".csv"
     with open(address, 'w') as file:
         writer = csv.writer(file)
         writer.writerows(data)
     print(address + " saved!!")
-    time.sleep(1)
 
 
 # To save data to csv, the first argument shall be 1
 # Second argument shall give the data saving frequency (default 1 Hz)
-data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
-data_list_n = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
-last_save_time = time.time()
+save_item_1 = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+save_item_2 = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
+data_list, data_list_n = save_item_1.copy(), save_item_2.copy()
+data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
+write_data_per_s = 3*60 
+last_save_time, last_write_time = time.time(), time.time()
 if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
     save_csv = True
     print('Will save data to csv file when armed!')
@@ -282,6 +284,11 @@ while True:
                     # calculae checksum
                     chks.accumulate(pkt_bytearray[:]) 
                     pkt_bytearray.extend(pack('H', chks.crc))
+                    if save_csv and master.sysid_state[master.sysid].armed: 
+                        data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
+                        data_step.extend([other_uavs[n_id].sysID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
+                        data_list_n.append(data_step)
+                        data_list_n_s.append(data_step)
                     try: xbee001.send_data(remote002,pkt_bytearray)
                     except: pass
         else:
@@ -488,12 +495,6 @@ while True:
                 other_uavs[others_sysID.value] = uav_info(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             else:
                 other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
-            
-            if save_csv and master.sysid_state[master.sysid].armed: 
-                utctime = datetime.utcnow()
-                data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
-                data_step.extend([others_sysID.value, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
-                data_list_n.append(data_step)
         
         elif received_msgID == 135: # received some parameters
             pkt[received_msgID].unpackpkt(data)
@@ -664,12 +665,17 @@ while True:
         data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
         data_step.extend([mode.value, lat.value, lon.value, alt.value, Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value, vx.value, vy.value, vz.value, roll.value, pitch.value, yaw.value])
         data_list.append(data_step)
+        data_list_s.append(data_step)
         last_save_time = time.time()
 
+    # Write data per write_data_per_s sec
+    if (master.sysid_state[master.sysid].armed) and (time.time() - last_write_time >= write_data_per_s):
+        write_csv(data_list_s, 1)
+        write_csv(data_list_n_s, 2)
+        data_list_s, data_list_n_s = save_item_1.copy, save_item_2.copy
+ 
     # Write data to hardware and initialize data list memory
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):
-        write_csv(data_list)
-        data_list = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
-        write_csv(data_list_n)
-        data_list_n = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
-
+        write_csv(data_list, 1)
+        write_csv(data_list_n, 2)
+        data_list, data_list_n = save_item_1.copy, save_item_2.copy

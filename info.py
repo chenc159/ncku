@@ -489,7 +489,7 @@ class packet134(object):
         self.gps_time = gps_time
 
     def packpkt(self):
-        return pack('<BBBBiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 
+        return pack('<BBBBBiiiiiiiiiiiiiii', self.msgID, self.sysID, self.compID, self.commID, 0,
                     self.lat.value, self.lon.value, self.alt.value,
                     self.vx.value, self.vy.value, self.vz.value,
                     self.xacc.value, self.yacc.value, self.xgyro.value, self.ygyro.value, self.zgyro.value,
@@ -499,23 +499,21 @@ class packet134(object):
         self.others_sysID = data[2]
         self.others_compID = data[3]
         self.others_commID = data[4]
-        self.others_lat = unpack('i',data[5:9])[0]
-        self.others_lon = unpack('i',data[9:13])[0]
-        self.others_alt = unpack('i',data[13:17])[0]
-        self.others_vx = unpack('i',data[17:21])[0]
-        self.others_vy = unpack('i',data[21:25])[0]
-        self.others_vz = unpack('i',data[25:29])[0]
-        self.others_xacc = unpack('i',data[29:33])[0]
-        self.others_yacc = unpack('i',data[33:37])[0]
-        self.others_xgyro = unpack('i',data[37:41])[0]
-        self.others_ygyro = unpack('i',data[41:45])[0]
-        self.others_zgyro = unpack('i',data[45:49])[0]
-        self.others_hdg = unpack('i',data[49:53])[0]
-        self.others_yaw = unpack('i',data[53:57])[0]
-        self.others_mode = unpack('i',data[57:61])[0]
-        self.others_gps_time = unpack('i',data[61:65])[0]
-        # print('bef')
-        # print(len(data))
-        # print(unpack('i',data[65:69])[0])
-        self.others_sys_time = unpack('i',data[65:69])[0]
+        empty = data[5]
+        self.others_lat = unpack('i',data[6:10])[0]
+        self.others_lon = unpack('i',data[10:14])[0]
+        self.others_alt = unpack('i',data[14:18])[0]
+        self.others_vx = unpack('i',data[18:22])[0]
+        self.others_vy = unpack('i',data[22:26])[0]
+        self.others_vz = unpack('i',data[26:30])[0]
+        self.others_xacc = unpack('i',data[30:34])[0]
+        self.others_yacc = unpack('i',data[34:38])[0]
+        self.others_xgyro = unpack('i',data[38:42])[0]
+        self.others_ygyro = unpack('i',data[42:46])[0]
+        self.others_zgyro = unpack('i',data[46:50])[0]
+        self.others_hdg = unpack('i',data[50:54])[0]
+        self.others_yaw = unpack('i',data[54:58])[0]
+        self.others_mode = unpack('i',data[58:62])[0]
+        self.others_gps_time = unpack('i',data[62:66])[0]
+        self.others_sys_time = unpack('i',data[66:70])[0]
         return self.others_sysID, self.others_compID, self.others_commID, self.others_lat, self.others_lon, self.others_alt, self.others_vx, self.others_vy, self.others_vz, self.others_xgyro, self.others_ygyro, self.others_zgyro, self.others_hdg, self.others_yaw, self.others_mode, self.others_gps_time, self.others_sys_time

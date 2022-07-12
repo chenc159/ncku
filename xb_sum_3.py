@@ -174,10 +174,11 @@ while True:
     elif msg_type == "SYSTEM_TIME":             # gps utc time
         gpstime = datetime.utcfromtimestamp(msg.time_unix_usec/1e6)
         gps_time.value = int((gpstime.minute*60 + gpstime.second)*1e3 + round(gpstime.microsecond/1e3))
-    elif msg_type == "ATTITUDE":              # imu: roll, pitch, yaw angle
+    elif msg_type == "ATTITUDE":              # imu: roll, pitch, yaw angle (nud -> enu)
         roll.value = round(msg.roll*57.2958)
-        pitch.value = round(msg.pitch*57.2958)
-        yaw.value = round(msg.yaw*57.2958)
+        pitch.value = round(-msg.pitch*57.2958)
+        yaw.value = round(90 - msg.yaw*57.2958)
+        # print(roll.value, pitch.value, yaw.value)
     elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
         lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.relative_alt
         vx.value, vy.value, vz.value = msg.vx, msg.vy, msg.vz # hdg.value = msg.hdg (vel NED, cm/s)
@@ -220,7 +221,7 @@ while True:
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon, target_alt, target_yaw = msg.lat_int, msg.lon_int, msg.alt, msg.yaw
-        print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
+        # print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
         if pos_vel_cmd == 1:
             Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = 0,0,0 # m/s -> cm/s
@@ -269,10 +270,12 @@ while True:
     for i in msgID_to_send:
         utctime = datetime.utcnow()
         if i == 130:
-            # delete overtimed neighbor - did not received its msg for more than 5 sec
             cur_sys_time = int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))
             for n_id in other_uavs.copy():
+                # print(n_id, (utctime.minute*60 + utctime.second)*1e3, cur_sys_time, other_uavs[n_id].sys_time)
+                # delete overtimed neighbor - did not received its msg for more than 5 sec
                 if (cur_sys_time - other_uavs[n_id].sys_time >= 5000):
+                    print('pop: ', n_id)
                     other_uavs.pop(n_id)
                 else:
                     dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, other_uavs[n_id].alt)
@@ -495,7 +498,8 @@ while True:
                 other_uavs[others_sysID.value] = uav_info(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             else:
                 other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
-        
+            # print('Received v2v id and time: ', others_sysID.value, others_sys_time.value, others_hdg.value, others_yaw.value)
+
         elif received_msgID == 135: # received some parameters
             pkt[received_msgID].unpackpkt(data)
             print('Change parameter (item id/param): ', pkt[received_msgID].item, pkt[received_msgID].param)

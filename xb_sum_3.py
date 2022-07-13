@@ -17,10 +17,10 @@ from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddre
 from info import * 
 
 # Write data to csv
-def write_csv(data, no):
+def write_csv(data, folder, no):
     utctime = datetime.utcnow() # let file name be the utc time when its write (-m-d-h-m-s:month,day,hour,minute,sec)
     file_time = str(no) + "--" + str(utctime.month) + "-" + str(utctime.day) + "-" + str(utctime.hour) + "-" + str(utctime.minute) + "-" + str(utctime.second)
-    address = os.path.dirname(os.path.realpath('__file__')) + '/result/' + file_time + ".csv"
+    address = os.path.dirname(os.path.realpath('__file__')) + '/result' + folder + '/' + file_time + ".csv"
     with open(address, 'w') as file:
         writer = csv.writer(file)
         writer.writerows(data)
@@ -591,11 +591,14 @@ while True:
                     des_yaw_change += 360
                 des_yawr = other_uavs[1].zgyro + k_yawr * des_yaw_change
                 des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
+                des_yawr *= math.pi/180 # deg to rad
                 # send out cmd
                 pos_vel_cmd, yaw_yawr_cmd = 2, 2
-                print('vx, vy, yr cmd: ', vx_f, vy_f, des_yawr)
-                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
-                        0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
+                print('Formation Start vx, vy, yr cmd: ', vx_f, vy_f, des_yawr)
+                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111000111), 
+                        0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
+                # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
+                #         0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 
                 #         0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, 0))                                                #0b110111000111
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
@@ -674,12 +677,12 @@ while True:
 
     # Write data per write_data_per_s sec
     if (master.sysid_state[master.sysid].armed) and (time.time() - last_write_time >= write_data_per_s):
-        write_csv(data_list_s, 1)
-        write_csv(data_list_n_s, 2)
-        data_list_s, data_list_n_s = save_item_1.copy, save_item_2.copy
+        write_csv(data_list_s, '1', 1)
+        write_csv(data_list_n_s, '1', 2)
+        data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
  
     # Write data to hardware and initialize data list memory
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):
-        write_csv(data_list, 1)
-        write_csv(data_list_n, 2)
-        data_list, data_list_n = save_item_1.copy, save_item_2.copy
+        write_csv(data_list, '2', 1)
+        write_csv(data_list_n, '2', 2)
+        data_list, data_list_n = save_item_1.copy(), save_item_2.copy()

@@ -17,7 +17,7 @@ from digi.xbee.devices import DigiMeshDevice,RemoteDigiMeshDevice,XBee64BitAddre
 from info import * 
 
 # Write data to csv
-def write_csv(data, folder, no):
+def write_csv(data, folder, no): # data, folder name (result '1', or '2'), no/num to save (1 or 2)
     utctime = datetime.utcnow() # let file name be the utc time when its write (-m-d-h-m-s:month,day,hour,minute,sec)
     file_time = str(no) + "--" + str(utctime.month) + "-" + str(utctime.day) + "-" + str(utctime.hour) + "-" + str(utctime.minute) + "-" + str(utctime.second)
     address = os.path.dirname(os.path.realpath('__file__')) + '/result' + folder + '/' + file_time + ".csv"

@@ -680,6 +680,7 @@ while True:
         write_csv(data_list_s, '1', 1)
         write_csv(data_list_n_s, '1', 2)
         data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
+        last_write_time = time.time()
  
     # Write data to hardware and initialize data list memory
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):

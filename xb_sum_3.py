@@ -228,11 +228,9 @@ while True:
         else: 
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(msg.vx*100), int(msg.vy*100), int(msg.vz*100) # m/s -> cm/s
         if yaw_yawr_cmd == 1:
-            Dyn_yaw.value, Dyn_yawr.value= int(msg.yaw*180/math.pi), 0 # rad, rad/s -> deg, deg/s
+            Dyn_yaw.value, Dyn_yawr.value = int(msg.yaw*180/math.pi), 0 # rad, rad/s -> deg, deg/s
         else: 
-            Dyn_yaw.value, Dyn_yawr.value= 0, int(msg.yaw_rate*180/math.pi) # rad, rad/s -> deg, deg/s
-    elif msg_type =='POSITION_TARGET_LOCAL_NED':
-        print("HERE!!!!!!!!!!!!!!!")
+            Dyn_yaw.value, Dyn_yawr.value = 0, int(msg.yaw_rate*180/math.pi) # rad, rad/s -> deg, deg/s
     # print(msg_type)
     
 
@@ -495,9 +493,9 @@ while True:
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value = pkt[received_msgID].unpackpkt(data)
             if others_sysID.value not in other_uavs:
-                other_uavs[others_sysID.value] = uav_info(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
+                other_uavs[others_sysID.value] = uav_info(others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             else:
-                other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_mode.value, others_gps_time.value, others_sys_time.value)
+                other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             # print('Received v2v id and time: ', others_sysID.value, others_sys_time.value, others_hdg.value, others_yaw.value)
 
         elif received_msgID == 135: # received some parameters
@@ -579,18 +577,19 @@ while True:
                 des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
                 a, b, c = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)  
                 Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
-                vx_f = other_uavs[1].vx/100 + k_v * des_y # v:ned (cm/s -> m/s), des:enu, so need to switch direction
-                vy_f = other_uavs[1].vy/100 + k_v * des_x
-                vx_f = max(min(vx_f, max_v), -max_v)
-                vy_f = max(min(vy_f, max_v), -max_v)
+                vx_f = max(min(other_uavs[1].vx/100 + k_v * des_y, max_v), -max_v) # v:ned (cm/s -> m/s), des:enu, so need to switch direction
+                vy_f = max(min(other_uavs[1].vy/100 + k_v * des_x, max_v), -max_v)
+                Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(vx_f*100), int(vy_f*100), 0
                 # get desired yaw rate
-                des_yaw_change = other_uavs[1].hdg - hdg.value
+                # des_yaw_change = other_uavs[1].hdg - hdg.value
+                des_yaw_change = other_uavs[1].yaw - yaw.value
                 if des_yaw_change > 180:
                     des_yaw_change -= 360
                 elif des_yaw_change <= -180:
                     des_yaw_change += 360
                 des_yawr = other_uavs[1].zgyro + k_yawr * des_yaw_change
                 des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
+                Dyn_yawr.value = int(des_yawr)
                 des_yawr *= math.pi/180 # deg to rad
                 # send out cmd
                 pos_vel_cmd, yaw_yawr_cmd = 2, 2

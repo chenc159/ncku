@@ -168,7 +168,7 @@ class info:
         }.get(num)
 
 class uav_info(object):
-    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
+    def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xgyro, ygyro, zgyro, hdg, yaw, mode, gps_time, sys_time):
         # int
         self.sysID = sysID
         self.compID = compID
@@ -186,11 +186,12 @@ class uav_info(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.yaw = yaw
         self.mode = mode
         self.gps_time = gps_time
         self.sys_time = sys_time
 
-    def update(self, lat, lon, alt, vx, vy, vz, xgyro, ygyro, zgyro, hdg, mode, gps_time, sys_time):
+    def update(self, lat, lon, alt, vx, vy, vz, xgyro, ygyro, zgyro, hdg, yaw, mode, gps_time, sys_time):
         self.lat = lat
         self.lon = lon
         self.alt = alt
@@ -203,6 +204,7 @@ class uav_info(object):
         self.ygyro = ygyro
         self.zgyro = zgyro
         self.hdg = hdg
+        self.yaw = yaw
         self.mode = mode
         self.gps_time = gps_time
         self.sys_time = sys_time

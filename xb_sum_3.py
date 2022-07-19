@@ -29,7 +29,7 @@ def write_csv(data, folder, no): # data, folder name (result '1', or '2'), no/nu
 
 # To save data to csv, the first argument shall be 1
 # Second argument shall give the data saving frequency (default 1 Hz)
-save_item_1 = [['time', 'mode', 'lat', 'lon', 'alt', 'dlat', 'dlon', 'dalt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw']]
+save_item_1 = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw', 'dlat', 'dlon', 'dalt', 'dvx', 'dvy', 'dyr']]
 save_item_2 = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
 data_list, data_list_n = save_item_1.copy(), save_item_2.copy()
 data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
@@ -593,6 +593,7 @@ while True:
                 des_yawr *= math.pi/180 # deg to rad
                 # send out cmd
                 pos_vel_cmd, yaw_yawr_cmd = 2, 2
+                print('yaws: ', other_uavs[1].yaw, yaw.value)
                 print('Formation Start vx, vy, yr cmd: ', vx_f, vy_f, des_yawr)
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111000111), 
                         0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
@@ -669,7 +670,7 @@ while True:
     if save_csv and master.sysid_state[master.sysid].armed and (time.time() - last_save_time >= 1/save_freq):
         utctime = datetime.utcnow()
         data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
-        data_step.extend([mode.value, lat.value, lon.value, alt.value, Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value, vx.value, vy.value, vz.value, roll.value, pitch.value, yaw.value])
+        data_step.extend([mode.value, lat.value, lon.value, alt.value, vx.value, vy.value, vz.value, roll.value, pitch.value, yaw.value, Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value, Dyn_vx.value, Dyn_vy.value, Dyn_yawr.value])
         data_list.append(data_step)
         data_list_s.append(data_step)
         last_save_time = time.time()

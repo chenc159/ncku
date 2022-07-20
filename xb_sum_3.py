@@ -520,10 +520,11 @@ while True:
             elif (pkt[received_msgID].item == 5):
                 max_yawr = pkt[received_msgID].param
         
-        elif received_msgID == 139 and data[3] == sysID: # received some parameters
+        elif received_msgID == 139 and data[3] == sysID: # gcs sent out via broadcast, so need to check uav id
             pkt[received_msgID].unpackpkt(data)
             if (master.flightmode != 'GUIDED'):
                 master.set_mode(4) # set guided
+            print('Received immed go (p/v, x, y, z): ', pkt[139].pos_vel, pkt[139].x, pkt[139].y, pkt[139].z)
 
     except: pass
 

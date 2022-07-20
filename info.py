@@ -465,6 +465,18 @@ class packet135(object):
         self.item = data[5]
         self.param = data[6]
 
+class packet139(object):
+    def __init__(self):
+        self.pos_vel = 9
+        self.x = 0
+        self.y = 0
+        self.z = 0
+    def unpackpkt(self, data):
+        self.pos_vel = data[5]
+        self.x = data[6:10]
+        self.y = data[10:14]
+        self.z = data[14:18]
+
 '''UAV 2 UAV'''
 class packet134(object):
     def __init__(self, sysID, compID, commID, lat, lon, alt, vx, vy, vz, xacc, yacc, xgyro, ygyro, zgyro, hdg, yaw, mode, gps_time):

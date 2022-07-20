@@ -111,7 +111,8 @@ pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     135: packet135(),
     136: packet136(sysID, compID, commID, Dyn_waypt_lat, Dyn_waypt_lon, Dyn_vx, Dyn_vy, Dyn_yaw, Dyn_yawr, waypt_id),
     137: packet137(sysID, compID, commID, servo1, servo2, servo3, servo4),
-    138: packet138(sysID, compID, commID)
+    138: packet138(sysID, compID, commID),
+    139: packet139()
 }
 
 # Get already loaded mission
@@ -150,6 +151,8 @@ other_uavs = {}
 ca_lat, ca_lon, ca_alt = 0.0, 0.0, 0
 col_avoid, ca_enable = False, False # col_avoid: if ca is needed; ca_enable: cmd from packet/gcs 
 max_v, max_yawr, k_v, k_yawr = 6.0, 90, 0.5, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
+immed_go = False # True => 0:pos, 1:vel (follow pkt139)
+# immed_x, immed_y, immed_z = 0.0, 0.0, 0.0
 
 while True:
     try:
@@ -221,7 +224,7 @@ while True:
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon, target_alt, target_yaw = msg.lat_int, msg.lon_int, msg.alt, msg.yaw
-        # print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
+        print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
         if pos_vel_cmd == 1:
             Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = 0,0,0 # m/s -> cm/s
@@ -399,7 +402,7 @@ while True:
         elif received_msgID == 133:
             print('CMD from 133 Packet: ', data[5])
             pkt[received_msgID].unpackpkt(data)
-            Mission_guided, Formation_start, Formation_stop = False, False, False
+            Mission_guided, Formation_start, Formation_stop, immed_go = False, False, False, False
             if (pkt[received_msgID].mode_arm <= 11): # set_mode, arm, disarm
                 send_cmd = True
                 last_cmd_time, last_cmd_send_time = time.time(), time.time()
@@ -488,6 +491,11 @@ while True:
             elif (pkt[received_msgID].mode_arm == 21): # Disable collision avoidance capability
                 ca_enable = False
                 print('Disable CA!')
+            elif (pkt[received_msgID].mode_arm == 22): # immed_go
+                if (master.flightmode != 'GUIDED'):
+                    master.set_mode(4) # set guided
+                immed_go = True
+                print('Immed go!')
 
         
         elif received_msgID == 134: # received v2v
@@ -511,6 +519,11 @@ while True:
                 max_v = pkt[received_msgID].param
             elif (pkt[received_msgID].item == 5):
                 max_yawr = pkt[received_msgID].param
+        
+        elif received_msgID == 139 and data[3] == sysID: # received some parameters
+            pkt[received_msgID].unpackpkt(data)
+            if (master.flightmode != 'GUIDED'):
+                master.set_mode(4) # set guided
 
     except: pass
 
@@ -525,8 +538,20 @@ while True:
             master.arducopter_arm()
         elif (pkt[133].mode_arm == 11): # disarm
             master.arducopter_disarm()
+    
+    if immed_go and (master.flightmode == 'GUIDED') and (time.time()-last_mavguide_time > 1/cmd_hz):
+        if pkt[139].pos_vel == 0:
+            pos_vel_cmd, yaw_yawr_cmd = 1, 1
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111111000), 
+                                    pkt[139].x, pkt[139].y, pkt[139].z, 0, 0, 0, 0, 0, 0, 0, 0))
+        elif pkt[139].pos_vel == 1:
+            pos_vel_cmd, yaw_yawr_cmd = 2, 1
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
+                        0, 0, 0, pkt[139].x/100, pkt[139].y/100, 0, 0, 0, 0, 0, 0))
+            Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = pkt[139].x, pkt[139].y, 0
+        last_mavguide_time = time.time()
 
-    if (master.flightmode == 'GUIDED') and (time.time()-last_mavguide_time > 1/cmd_hz):
+    elif (master.flightmode == 'GUIDED') and (time.time()-last_mavguide_time > 1/cmd_hz):
         # Collision avoidance (CA) above all
         col_avoid_temp = False # to check for this iteration 
         if ca_enable and pkt[131].LF != 0: # only non-leader uav need to CA
@@ -681,6 +706,9 @@ while True:
         write_csv(data_list_n_s, '1', 2)
         data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
         last_write_time = time.time()
+    # else:
+    #     print(master.sysid_state[master.sysid].armed)
+    #     print(time.time() - last_write_time, time.time(), last_write_time)
  
     # Write data to hardware and initialize data list memory
     if (not master.sysid_state[master.sysid].armed) and (len(data_list) != 1):

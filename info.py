@@ -473,9 +473,9 @@ class packet139(object):
         self.z = 0
     def unpackpkt(self, data):
         self.pos_vel = data[5]
-        self.x = data[6:10]
-        self.y = data[10:14]
-        self.z = data[14:18]
+        self.x = unpack('i',data[6:10])[0]
+        self.y = unpack('i',data[10:14])[0]
+        self.z = unpack('i',data[14:18])[0]
 
 '''UAV 2 UAV'''
 class packet134(object):

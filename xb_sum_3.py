@@ -33,7 +33,7 @@ save_item_1 = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', '
 save_item_2 = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
 data_list, data_list_n = save_item_1.copy(), save_item_2.copy()
 data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
-write_data_per_s = 3*60 
+write_data_per_s = 1*60 
 last_save_time, last_write_time = time.time(), time.time()
 if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
     save_csv = True
@@ -224,7 +224,7 @@ while True:
         # print(msg)
     elif msg_type =='POSITION_TARGET_GLOBAL_INT':
         target_lat, target_lon, target_alt, target_yaw = msg.lat_int, msg.lon_int, msg.alt, msg.yaw
-        print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
+        # print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
         if pos_vel_cmd == 1:
             Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = 0,0,0 # m/s -> cm/s

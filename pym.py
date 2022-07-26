@@ -111,7 +111,8 @@ while True:
                 GPS_time_usec, fix, num = msg.time_usec, msg.fix_type, msg.satellites_visible
             elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
                 GPSACC_time_boot, lat, lon, alt = msg.time_boot_ms, msg.lat, msg.lon, msg.relative_alt # originally in degE7 and mm
-                vx, vy, vz, heading = msg.vx, msg.vy, msg.vz, msg.hdg # originally in cm/s and cdeg    
+                vx, vy, vz, heading = msg.vx, msg.vy, msg.vz, msg.hdg # originally in cm/s and cdeg 
+                print(msg)   
             elif msg_type == "HEARTBEAT":             # MAV_STATE
                 MAV_state = msg.system_status
             elif msg_type == "BATTERY_STATUS":        # Battery status
@@ -137,6 +138,8 @@ while True:
             elif msg_type == "SERVO_OUTPUT_RAW":
                 # print(msg)
                 pass
+            elif msg_type == "LOCAL_POSITION_NED":
+                print(msg)
 
             # print("\n", msg)
             # print(msg_type)

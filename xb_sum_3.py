@@ -608,21 +608,22 @@ while True:
                 Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(vx_f*100), int(vy_f*100), 0
                 # get desired yaw rate
                 # des_yaw_change = other_uavs[1].hdg - hdg.value
-                des_yaw_change = other_uavs[1].yaw - yaw.value
-                if des_yaw_change > 180:
-                    des_yaw_change -= 360
-                elif des_yaw_change <= -180:
-                    des_yaw_change += 360
-                des_yawr = other_uavs[1].zgyro + k_yawr * des_yaw_change
-                des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
-                Dyn_yawr.value = int(des_yawr)
-                des_yawr *= math.pi/180 # deg to rad
-                # send out cmd
-                pos_vel_cmd, yaw_yawr_cmd = 2, 2
-                print('yaws: ', other_uavs[1].yaw, yaw.value)
-                print('Formation Start vx, vy, yr cmd: ', vx_f, vy_f, des_yawr)
-                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111000111), 
-                        0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
+                des_yaw = (90 - other_uavs[1].yaw)*math.pi/180 # enu2ned, deg2rad
+                # des_yaw_change = other_uavs[1].yaw - yaw.value
+                # if des_yaw_change > 180:
+                #     des_yaw_change -= 360
+                # elif des_yaw_change <= -180:
+                #     des_yaw_change += 360
+                # des_yawr = other_uavs[1].zgyro + k_yawr * des_yaw_change
+                # des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
+                # Dyn_yawr.value = int(des_yawr)
+                # des_yawr *= math.pi/180 # deg to rad
+                # # send out cmd
+                pos_vel_cmd, yaw_yawr_cmd = 2, 1
+                # print('yaws: ', other_uavs[1].yaw, yaw.value)
+                print('Formation Start vx, vy, yr cmd: ', vx_f, vy_f, des_yaw)
+                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
+                        0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, des_yaw, 0))
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b010111100011), 
                 #         0, 0, guide_alt[0], vx_f, vy_f, 0, 0, 0, 0, 0, des_yawr))
                 # master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111000111), 

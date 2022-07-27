@@ -609,7 +609,7 @@ while True:
                 # get desired yaw rate
                 # des_yaw_change = other_uavs[1].hdg - hdg.value
                 des_yaw = (90 - other_uavs[1].yaw)*math.pi/180 # enu2ned, deg2rad
-                Dyn_yaw.value = des_yaw
+                Dyn_yaw.value = round(90 - other_uavs[1].yaw)
                 # des_yaw_change = other_uavs[1].yaw - yaw.value
                 # if des_yaw_change > 180:
                 #     des_yaw_change -= 360

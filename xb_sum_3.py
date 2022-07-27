@@ -184,7 +184,9 @@ while True:
         # print(roll.value, pitch.value, yaw.value)
     elif msg_type == "GLOBAL_POSITION_INT":   # Fused GPS and accelerometers: location, velocity, and heading
         lat.value, lon.value, alt.value = msg.lat, msg.lon, msg.relative_alt
-        vx.value, vy.value, vz.value = msg.vx, msg.vy, msg.vz # hdg.value = msg.hdg (vel NED, cm/s)
+        # vx.value, vy.value, vz.value = msg.vx, msg.vy, msg.vz # hdg.value = msg.hdg (vel NED, cm/s)
+    elif msg_type == "LOCAL_POSITION_NED":
+        vx.value, vy.value, vz.value = round(msg.vx*100), round(msg.vy*100), round(msg.vz*100) # (vel NED, m/s -> cm/s)
     elif msg_type == "SCALED_IMU2":           # imu: linear acceleration and angular velocity
         xacc.value, yacc.value, zacc.value = msg.xacc, msg.yacc, msg.zacc
         xgyro.value, ygyro.value, zgyro.value = msg.xgyro, msg.ygyro, msg.zgyro

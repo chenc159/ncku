@@ -38,7 +38,7 @@ last_save_time, last_write_time = time.time(), time.time()
 if (len(sys.argv) >= 2) and (sys.argv[1] == str(1)):
     save_csv = True
     print('Will save data to csv file when armed!')
-    save_freq = 1
+    save_freq = 2
     # if (len(sys.argv) > 2):
     #     save_freq = int(sys.argv[2])
     # else: save_freq = 1

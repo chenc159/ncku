@@ -53,7 +53,12 @@ master = mavutil.mavlink_connection('/dev/ttyACM0', baud = 57600)
 
 # Connect xbee1 and declare gcs xbee address
 xbee001 = DigiMeshDevice('/dev/ttyUSB0', 115200)
-remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040D8DCD5")) # 0013A20040F5C5DB
+if (len(sys.argv) >= 3) and (sys.argv[2] == 'g'):
+    remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A2004127B732"))
+    print('Gateway xbee address')
+else:
+    remote002 = RemoteDigiMeshDevice(xbee001,XBee64BitAddress.from_hex_string("0013A20040D8DCD5"))
+    print('Default xbee address')
 xbee001.open(force_settings=True)
 
 # Get checksum

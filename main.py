@@ -156,7 +156,7 @@ missionseq2gcs, wayptseq2gcs = 99, 99
 other_uavs = {}
 ca_lat, ca_lon, ca_alt = 0.0, 0.0, 0
 col_avoid, ca_enable = False, False # col_avoid: if ca is needed; ca_enable: cmd from packet/gcs 
-max_v, max_yawr, k_v, k_yawr = 6.0, 90, 0.5, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
+max_v, max_yawr, k_v, k_yawr = 6.0, 90, 0.2, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
 immed_go = False # True => 0:pos, 1:vel (follow pkt139)
 # immed_x, immed_y, immed_z = 0.0, 0.0, 0.0
 

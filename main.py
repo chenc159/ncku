@@ -463,7 +463,7 @@ while True:
                 waypt_id.value = 0
                 Lx1, Ly1, Lz1 = pm.geodetic2enu(guide_lat[0]/1e7, guide_lon[0]/1e7, guide_alt[0], lat.value/1e7, lon.value/1e7, alt.value/1e3)
                 Lx2, Ly2, Lz2 = pm.geodetic2enu(guide_lat[1]/1e7, guide_lon[1]/1e7, guide_alt[1], lat.value/1e7, lon.value/1e7, alt.value/1e3)
-                heading = math.atan2((Ly2 - Ly1),(Lx2 - Lx1))
+                heading = 90*math.pi/180 - math.atan2((Ly2 - Ly1),(Lx2 - Lx1)) # enu2ned
                 if pkt[131].LF == 0:
                     First_lat, First_lon, First_alt = guide_lat[0], guide_lon[0], guide_alt[0]
                 else: # LF == 1 or 2

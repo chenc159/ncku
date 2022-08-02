@@ -610,8 +610,8 @@ while True:
             if not self_fly:
                 # get desired velocity
                 Lx, Ly, Lz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
-                des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
-                # des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].yaw*math.pi/180)
+                # des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
+                des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].yaw*math.pi/180)
                 a, b, c = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)  
                 Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
                 vx_f = max(min(other_uavs[1].vx/100 + k_v * des_y, max_v), -max_v) # v:ned (cm/s -> m/s), des:enu, so need to switch direction

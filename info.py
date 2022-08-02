@@ -463,7 +463,7 @@ class packet135(object):
         self.param = 0
     def unpackpkt(self, data):
         self.item = data[5]
-        self.param = data[6]
+        self.param = unpack('i',data[6:10])[0]
 
 class packet139(object):
     def __init__(self):

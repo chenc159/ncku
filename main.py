@@ -157,7 +157,7 @@ missionseq2gcs, wayptseq2gcs = 99, 99
 other_uavs = {}
 ca_lat, ca_lon, ca_alt = 0.0, 0.0, 0
 col_avoid, ca_enable = False, False # col_avoid: if ca is needed; ca_enable: cmd from packet/gcs 
-max_v, max_yawr, k_v, k_yawr = 5.0, 90, 0.05, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
+max_v, max_yawr, k_v, k_yawr = 6.0, 90, 0.5, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
 immed_go = False # True => 0:pos, 1:vel (follow pkt139)
 # immed_x, immed_y, immed_z = 0.0, 0.0, 0.0
 
@@ -464,7 +464,7 @@ while True:
                 waypt_id.value = 0
                 Lx1, Ly1, Lz1 = pm.geodetic2enu(guide_lat[0]/1e7, guide_lon[0]/1e7, guide_alt[0], lat.value/1e7, lon.value/1e7, alt.value/1e3)
                 Lx2, Ly2, Lz2 = pm.geodetic2enu(guide_lat[1]/1e7, guide_lon[1]/1e7, guide_alt[1], lat.value/1e7, lon.value/1e7, alt.value/1e3)
-                heading = math.atan2((Ly2 - Ly1),(Lx2 - Lx1)) # enu2ned
+                heading = math.atan2((Ly2 - Ly1),(Lx2 - Lx1))  # enu for calculation
                 if pkt[131].LF == 0:
                     First_lat, First_lon, First_alt = guide_lat[0], guide_lon[0], guide_alt[0]
                 else: # LF == 1 or 2
@@ -474,7 +474,7 @@ while True:
                     # Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = First_lat, First_lon, First_alt
                     # print(Fx, Fy, First_lat, First_lon, First_alt)
                 pos_vel_cmd, yaw_yawr_cmd = 1, 1
-                heading = 90*math.pi/180 - math.atan2((Ly2 - Ly1),(Lx2 - Lx1)) # enu2ned
+                heading = 90*math.pi/180 - heading # enu2ned
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111111000), 
                         First_lat, First_lon, First_alt, 0, 0, 0, 0, 0, 0, heading, 0))
                 print('Formation first point sent!', First_lat, First_lon, First_alt, heading)
@@ -559,7 +559,7 @@ while True:
             pos_vel_cmd, yaw_yawr_cmd = 2, 1
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
                         0, 0, 0, pkt[139].x/100, pkt[139].y/100, 0, 0, 0, 0, 0, 0))
-            Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = pkt[139].x, pkt[139].y, 0
+            Dyn_vx.value, Dyn_vy.value, Dyn_vz.value, Dyn_yaw.value = pkt[139].x, pkt[139].y, 0, 0
         last_mavguide_time = time.time()
 
     elif (master.flightmode == 'GUIDED') and (time.time()-last_mavguide_time > 1/cmd_hz):
@@ -610,8 +610,8 @@ while True:
             if not self_fly:
                 # get desired velocity
                 Lx, Ly, Lz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
-                des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
-                # des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].yaw*math.pi/180)
+                # des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
+                des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].yaw*math.pi/180)
                 a, b, c = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)  
                 Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
                 vx_f = max(min(other_uavs[1].vx/100 + k_v * des_y, max_v), -max_v) # v:ned (cm/s -> m/s), des:enu, so need to switch direction

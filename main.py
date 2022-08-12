@@ -297,11 +297,11 @@ while True:
                     # calculae checksum
                     chks.accumulate(pkt_bytearray[:]) 
                     pkt_bytearray.extend(pack('H', chks.crc))
-                    if save_csv and master.sysid_state[master.sysid].armed: 
-                        data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
-                        data_step.extend([other_uavs[n_id].sysID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
-                        data_list_n.append(data_step)
-                        data_list_n_s.append(data_step)
+                    # if save_csv and master.sysid_state[master.sysid].armed: 
+                    #     data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
+                    #     data_step.extend([other_uavs[n_id].sysID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
+                    #     data_list_n.append(data_step)
+                    #     data_list_n_s.append(data_step)
                     try: xbee001.send_data(remote002,pkt_bytearray)
                     except: pass
         else:
@@ -515,7 +515,14 @@ while True:
             else:
                 other_uavs[others_sysID.value].update(others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value)
             # print('Received v2v id and time: ', others_sysID.value, others_sys_time.value, others_hdg.value, others_yaw.value)
-
+            if save_csv and master.sysid_state[master.sysid].armed: 
+                utctime = datetime.utcnow()
+                data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
+                dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, others_lat.value/1e7, others_lon.value/1e7, others_alt.value)
+                data_step.extend([others_sysID.value, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
+                data_list_n.append(data_step)
+                data_list_n_s.append(data_step)
+        
         elif received_msgID == 135: # received some parameters
             pkt[received_msgID].unpackpkt(data)
             print('Change parameter (item id/param): ', pkt[received_msgID].item, pkt[received_msgID].param)

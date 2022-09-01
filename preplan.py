@@ -226,6 +226,9 @@ def triangle_s(Desired_dist, Radius, Angle, Waypt_num, x, y):
 # leader and followers turn with the inner follower as pivot
 def triangle_c(Desired_dist, Radius, Angle, Waypt_num, x, y):
 
+    # desired follower to follower distance
+    Desired_dist_f2f = 2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist
+    
     # pivot point (add start and final just to balance length)
     pivot_id, pivot_x, pivot_y = [0], [x[0]], [y[0]]
     
@@ -273,7 +276,8 @@ def triangle_c(Desired_dist, Radius, Angle, Waypt_num, x, y):
         wp_x2.append(sol[xs])
         wp_y2.append(sol[ys])
 
-        if hdg2 < hdg1: # turn right, F1 as pivot
+        # Follower with shorter path-to-travel is the pivot
+        if (wp_x1[-1]-x11)**2+(wp_y1[-1]-y11)**2 < (wp_x2[-1]-x21)**2+(wp_y2[-1]-y21)**2: # turn right, F1 as pivot
             pivot_id.append(1)
             pivot_x.append(wp_x1[-1])
             pivot_y.append(wp_y1[-1])
@@ -327,13 +331,13 @@ def triangle_c(Desired_dist, Radius, Angle, Waypt_num, x, y):
         while deg <= 2*math.pi:
             cir_lx.append(Desired_dist*math.cos(deg) + pivot_x[i])
             cir_ly.append(Desired_dist*math.sin(deg) + pivot_y[i])
-            cir_ofx.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.cos(deg) + pivot_x[i])
-            cir_ofy.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.sin(deg) + pivot_y[i])
+            cir_ofx.append(Desired_dist_f2f*math.cos(deg) + pivot_x[i])
+            cir_ofy.append(Desired_dist_f2f*math.sin(deg) + pivot_y[i])
             deg += cir_step
         cir_lx.append(Desired_dist*math.cos(0) + pivot_x[i])
         cir_ly.append(Desired_dist*math.sin(0) + pivot_y[i])
-        cir_ofx.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.cos(0) + pivot_x[i])
-        cir_ofy.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.sin(0) + pivot_y[i])
+        cir_ofx.append(Desired_dist_f2f*math.cos(0) + pivot_x[i])
+        cir_ofy.append(Desired_dist_f2f*math.sin(0) + pivot_y[i])
         plt.plot(np.asarray(cir_lx), np.asarray(cir_ly), color = 'y')
         plt.plot(np.asarray(cir_ofx), np.asarray(cir_ofy), color = 'y')
 
@@ -365,55 +369,48 @@ def triangle_c(Desired_dist, Radius, Angle, Waypt_num, x, y):
         plt.plot(tri_x, tri_y, color = 'k')
 
         '''Draw the leader and outer follower's turning path'''
-        wpt_num = 8
+        wpt_num = 4
         # Leader's turning angle wrt pivot (1 as start, 2 as end)
         Lt1 = math.atan2((pivot_y[i] - Lpy_bt),(pivot_x[i] - Lpx_bt)) + math.pi
         Lt2 = math.atan2((pivot_y[i] - Lpy_at),(pivot_x[i] - Lpx_at)) + math.pi
-        if Lt1 > math.pi:
-            Lt1 -= 2*math.pi
-        elif Lt1 < -math.pi:
-            Lt1 += 2*math.pi
-        if Lt2 > math.pi:
-            Lt2 -= 2*math.pi
-        elif Lt2 < -math.pi:
-            Lt2 += 2*math.pi
         # plt.scatter(Desired_dist*math.cos(Lt1) + pivot_x[i], Desired_dist*math.sin(Lt1) + pivot_y[i], color = 'g')
         # plt.scatter(Desired_dist*math.cos(Lt2) + pivot_x[i], Desired_dist*math.sin(Lt2) + pivot_y[i], color = 'm')
 
         # Outer follower's turning angle wrt pivot (1 as start, 2 as end)
         Ft1 = math.atan2((pivot_y[i] - (Lpy_bt+Desired_dist*math.sin(math.pi+hdg1-ang_t))),(pivot_x[i] - (Lpx_bt+Desired_dist*math.cos(math.pi+hdg1-ang_t)))) + math.pi
         Ft2 = math.atan2((pivot_y[i] - (Lpy_at+Desired_dist*math.sin(math.pi+hdg2f-ang_t))),(pivot_x[i] - (Lpx_at+Desired_dist*math.cos(math.pi+hdg2f-ang_t)))) + math.pi
-        if Ft1 > math.pi:
-            Ft1 -= 2*math.pi
-        elif Ft1 < -math.pi:
-            Ft1 += 2*math.pi
-        if Ft2 > math.pi:
-            Ft2 -= 2*math.pi
-        elif Ft2 < -math.pi:
-            Ft2 += 2*math.pi
-        # plt.scatter(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.cos(Ft1) + pivot_x[i], 2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.sin(Ft1) + pivot_y[i], color = 'g')
-        # plt.scatter(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.cos(Ft2) + pivot_x[i], 2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.sin(Ft2) + pivot_y[i], color = 'm')
+        # plt.scatter(Desired_dist_f2f*math.cos(Ft1) + pivot_x[i], Desired_dist_f2f*math.sin(Ft1) + pivot_y[i], color = 'g')
+        # plt.scatter(Desired_dist_f2f*math.cos(Ft2) + pivot_x[i], Desired_dist_f2f*math.sin(Ft2) + pivot_y[i], color = 'm')
 
-        Ldeg, Fdeg = Lt1, Ft1
+        # At each waypt, leader and follower's angle (rad)
+        Lang, Fang = Lt1, Ft1
+        # Change of angle, neg if pivot_id=1, pos if pivot_id[i]=2
+        dLang = math.copysign(1, pivot_id[i]-1.5)*min(abs(Lt2 - Lt1), abs(2*math.pi - abs(Lt2 - Lt1)))/wpt_num 
+        dFang = math.copysign(1, pivot_id[i]-1.5)*min(abs(Ft2 - Ft1), abs(2*math.pi - abs(Ft2 - Ft1)))/wpt_num
         cir_lx, cir_ly, cir_ofx, cir_ofy = [], [], [], []
         for j in range(wpt_num):
+            cir_lx.append(Desired_dist*math.cos(Lang) + pivot_x[i])
+            cir_ly.append(Desired_dist*math.sin(Lang) + pivot_y[i])
+            Lang += dLang
 
-            cir_lx.append(Desired_dist*math.cos(Ldeg) + pivot_x[i])
-            cir_ly.append(Desired_dist*math.sin(Ldeg) + pivot_y[i])
-            Ldeg += (Lt2 - Lt1)/wpt_num
-
-            cir_ofx.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.cos(Fdeg) + pivot_x[i])
-            cir_ofy.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.sin(Fdeg) + pivot_y[i])
-            Fdeg += (Ft2 - Ft1)/wpt_num
+            cir_ofx.append(Desired_dist_f2f*math.cos(Fang) + pivot_x[i])
+            cir_ofy.append(Desired_dist_f2f*math.sin(Fang) + pivot_y[i])
+            Fang += dFang
 
         cir_lx.append(Desired_dist*math.cos(Lt2) + pivot_x[i])
         cir_ly.append(Desired_dist*math.sin(Lt2) + pivot_y[i])
-        cir_ofx.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.cos(Ft2) + pivot_x[i])
-        cir_ofy.append(2*math.sin(Angle*0.01745)/math.sin(90*0.01745)*Desired_dist*math.sin(Ft2) + pivot_y[i])
+        cir_ofx.append(Desired_dist_f2f*math.cos(Ft2) + pivot_x[i])
+        cir_ofy.append(Desired_dist_f2f*math.sin(Ft2) + pivot_y[i])
         plt.plot(np.asarray(cir_lx), np.asarray(cir_ly), color = cm.hsv(norm(4)))
         plt.plot(np.asarray(cir_ofx), np.asarray(cir_ofy), color = cm.hsv(norm(4-pivot_id[i])))
         plt.scatter(np.asarray(cir_lx), np.asarray(cir_ly), color = cm.hsv(norm(4)))
         plt.scatter(np.asarray(cir_ofx), np.asarray(cir_ofy), color = cm.hsv(norm(4-pivot_id[i])))
+        
+        '''Draw the formation shape of every turning wpt'''
+        # for j in range(1, len(cir_lx)-1):
+        #     tri_x = np.asarray([cir_lx[j], pivot_x[i], cir_ofx[j], cir_lx[j]])
+        #     tri_y = np.asarray([cir_ly[j], pivot_y[i], cir_ofy[j], cir_ly[j]])
+        #     plt.plot(tri_x, tri_y, color = 'k')
 
         
 
@@ -427,8 +424,8 @@ def triangle_c(Desired_dist, Radius, Angle, Waypt_num, x, y):
 # triangle_pi(10, 10, 60, 10, [0, 1, 51, 45], [0, 50, 60, 0])
 # triangle_s(10, 10, 60, 10, [0, 1, 51, 45], [0, 50, 60, 0])
 # triangle_c(10, 10, 60, 10, [0, 1, 51, 45], [0, 50, 60, 0])
-# triangle_c(10, 10, 60, 10, [0, 1, 51, 45, -40], [0, 50, 60, 100, 190])
-triangle_c(10, 10, 60, 10, [0, 1, 51, 45], [0, 50, 60, 100])
-
+# triangle_c(10, 10, 60, 10, [0, 1, 51, 45], [0, 50, 60, 100])
+# triangle_c(10, 10, 60, 10, [0, 1, 51, 45, -30, -5, 60], [20, 70, 60, 0, 3, -50, -40])
+triangle_c(10, 10, 60, 10, [0, 1, 51, 40, 60, 100, 80, 120], [0, 50, 52, 2, -50, -45, 40, 35])
 
 

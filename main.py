@@ -152,12 +152,14 @@ last_mavguide_time = 0
 last_sent_time, last_seq_sent_time, last_v2v_sent_time, msgID_to_send = 0, 0, 0, []
 v2v_hz, cmd_hz = 3, 5 
 Mission_guided, Formation_start, Formation_stop = False, False, False
+formation_start_time = 0
 last_cmd_time, send_cmd, confirmation = 0, False, 0
 missionseq2gcs, wayptseq2gcs = 99, 99
 other_uavs = {}
 ca_lat, ca_lon, ca_alt = 0.0, 0.0, 0
 col_avoid, ca_enable = False, False # col_avoid: if ca is needed; ca_enable: cmd from packet/gcs 
-max_v, max_yawr, k_v, k_yawr = 6.0, 90, 0.5, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
+max_v, max_yawr, k_v, k_yawr = 6.0, 90, 2.0, 1.2 # Max Vel: m/s, Max Yaw Rate: deg/s, gains
+pref_v, pref_a, pref_w = 3.0, -1.0, 15 # m/s, m/s^2, deg/s
 immed_go = False # True => 0:pos, 1:vel (follow pkt139)
 # immed_x, immed_y, immed_z = 0.0, 0.0, 0.0
 
@@ -236,13 +238,13 @@ while True:
         # print('POSITION_TARGET_GLOBAL_INT: ', msg.lat_int, msg.lon_int, msg.alt, int(msg.vx*100), int(msg.vy*100), int(msg.vz*100), int(msg.yaw*180/math.pi), int(msg.yaw_rate*180/math.pi))
         if pos_vel_cmd == 1:
             Dyn_waypt_lat.value, Dyn_waypt_lon.value, Dyn_waypt_alt.value = int(msg.lat_int), int(msg.lon_int), int(msg.alt) #degE7, degE7, m 
-            Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = 0,0,0 # m/s -> cm/s
-        else: 
-            Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(msg.vx*100), int(msg.vy*100), int(msg.vz*100) # m/s -> cm/s
+            # Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = 0,0,0 # m/s -> cm/s
+        # else: 
+        #     Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(msg.vx*100), int(msg.vy*100), int(msg.vz*100) # m/s -> cm/s
         if yaw_yawr_cmd == 1:
             Dyn_yaw.value, Dyn_yawr.value = int(msg.yaw*180/math.pi), 0 # rad, rad/s -> deg, deg/s
-        else: 
-            Dyn_yaw.value, Dyn_yawr.value = 0, int(msg.yaw_rate*180/math.pi) # rad, rad/s -> deg, deg/s
+        # else: 
+        #     Dyn_yaw.value, Dyn_yawr.value = 0, int(msg.yaw_rate*180/math.pi) # rad, rad/s -> deg, deg/s
     # print(msg_type)
     
 
@@ -346,7 +348,7 @@ while True:
             if (999 not in pkt[received_msgID].Mission_alt): # if all mission waypts are received
                 print('All Points Received!')
                 guide_lat, guide_lon, guide_alt = pkt[received_msgID].Mission_lat, pkt[received_msgID].Mission_lon, pkt[received_msgID].Mission_alt
-                if pkt[131].Formation == 0 or pkt[131].LF == 0:
+                if pkt[131].Formation == 0:
                     wp = mavwp.MAVWPLoader()
                     frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
                     for i in range(pkt[131].Waypt_count):
@@ -380,24 +382,26 @@ while True:
                     msgID_to_send.extend([129]) # send out mission_ack packet
                 else:
                     wayptseq2gcs = 999
-                    '''
                     guide_lat, guide_lon, guide_alt = pkt[received_msgID].Mission_lat, pkt[received_msgID].Mission_lon, pkt[received_msgID].Mission_alt
                     x_list, y_list = [], []
+                    orig_lat, orig_lon, orig_alt = pkt[132].Mission_lat[0], pkt[132].Mission_lon[0], pkt[132].Mission_alt[0]
                     for i in range(pkt[131].Waypt_count): # convert lla to enu
                         des_lat, des_lon, des_alt = pkt[132].Mission_lat[i], pkt[132].Mission_lon[i], pkt[132].Mission_alt[i]
-                        x, y, z = pm.geodetic2enu(des_lat/1e7, des_lon/1e7, des_alt, lat.value/1e7, lon.value/1e7, alt.value/1e3)
+                        x, y, z = pm.geodetic2enu(des_lat/1e7, des_lon/1e7, des_alt, orig_lat/1e7, orig_lon/1e7, orig_alt/1e3)
                         x_list.append(x)
                         y_list.append(y)
-                    # pre-calculate triangle/straight-line formation waypoints
-                    wp_x, wp_y = plan.triangle_straight(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Radius, pkt[131].Angle, pkt[131].Waypt_num, x_list, y_list)
-                    guide_lat, guide_lon, guide_alt = [], [], []
-                    for i in range(len(wp_x)): # convert enu to lla, and store them in guide_lat & guide_lon
-                        guide_alt.append(int(pkt[132].Mission_alt[0])) # assume altitudes are the same, and store them in guide_alt
-                        a, b, c = pm.enu2geodetic(wp_x[i], wp_y[i], guide_alt[-1], lat.value/1e7, lon.value/1e7, alt.value/1e3)  
-                        guide_lat.append(int(a*1e7))
-                        guide_lon.append(int(b*1e7))
-                    print('Finish Formation Calculation!', guide_lat, guide_lon)
+                    # initialize triangle formation class/waypoints
+                    formation = plan.formation_plan(pkt[131].Desired_dist, pkt[131].Angle, x_list, y_list, pref_v, pref_a, pref_w)
+                    # wp_x, wp_y = plan.triangle_straight(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Radius, pkt[131].Angle, pkt[131].Waypt_num, x_list, y_list)
+                    # guide_lat, guide_lon, guide_alt = [], [], []
+                    # for i in range(len(wp_x)): # convert enu to lla, and store them in guide_lat & guide_lon
+                    #     guide_alt.append(int(pkt[132].Mission_alt[0])) # assume altitudes are the same, and store them in guide_alt
+                    #     a, b, c = pm.enu2geodetic(wp_x[i], wp_y[i], guide_alt[-1], lat.value/1e7, lon.value/1e7, alt.value/1e3)  
+                    #     guide_lat.append(int(a*1e7))
+                    #     guide_lon.append(int(b*1e7))
+                    print('Finish Formation Initialization! 3 stages time: ', formation.time)
 
+                    '''
                     if save_csv:
                         utctime = datetime.utcnow()
                         data_list_wpt = [['time: '+str((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3)), 'Formation: '+str(pkt[131].Formation), 'LF: '+str(pkt[131].LF)]]
@@ -454,7 +458,7 @@ while True:
                     print('Mission seq, command, x, y, z from Pixhawk: ', mi_msg.seq, mi_msg.command, mi_msg.x, mi_msg.y, mi_msg.z)
                     pkt[132].mission_save_input(mi_msg.seq, mi_msg.command, int(mi_msg.x*1e7), int(mi_msg.y*1e7), int(mi_msg.z))
                 print('Done downloading Pixhawk mission. Time: ', start_time)
-            elif (pkt[received_msgID].mode_arm == 16): # set out guided waypts to gcs
+            elif (pkt[received_msgID].mode_arm == 16): # send out guided waypts to gcs
                 wayptseq2gcs = 0
                 command.value, result.value = 997, len(guide_lat) # send out the totoal number of mission item
                 if len(guide_lat) != len(guide_lon):
@@ -480,20 +484,15 @@ while True:
                 print('Formation first point sent!', First_lat, First_lon, First_alt, heading)
             elif (pkt[received_msgID].mode_arm == 18): # Formation_start: start guided mission
                 Formation_start = True
-                if pkt[131].LF == 0:
-                    master.set_mode(3) # Leader set auto
-                else:
-                    master.set_mode(4) # Follower set guided
+                master.set_mode(4) # Follower set guided
+                formation_start_time = pkt[133].time
                 print('Formation flight STARTED! And set mode!')
             elif (pkt[received_msgID].mode_arm == 19): # Formation stop: stop guided mission
                 Formation_stop = True
-                if pkt[131].LF == 0:
-                    master.set_mode(5) # Leader set loiter
-                else: # follower stay loiter
-                    stop_lat, stop_lon, stop_alt = lat.value, lon.value, alt.value
-                    pos_vel_cmd, yaw_yawr_cmd = 1, 1
-                    master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111111000), 
-                            lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
+                stop_lat, stop_lon, stop_alt = lat.value, lon.value, alt.value
+                pos_vel_cmd, yaw_yawr_cmd = 1, 1
+                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111111000), 
+                        lat.value, lon.value, alt.value/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
                 print('Formation flight STOPPED!')
             elif (pkt[received_msgID].mode_arm == 20): # Eable collision avoidance capability
                 ca_enable = True
@@ -506,8 +505,7 @@ while True:
                     master.set_mode(4) # set guided
                 immed_go = True
                 print('Immed go!')
-
-        
+  
         elif received_msgID == 134: # received v2v
             others_sysID.value, others_compID.value, others_commID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_xgyro.value, others_ygyro.value, others_zgyro.value, others_hdg.value, others_yaw.value, others_mode.value, others_gps_time.value, others_sys_time.value = pkt[received_msgID].unpackpkt(data)
             if others_sysID.value not in other_uavs:
@@ -534,8 +532,9 @@ while True:
                 k_yawr = pkt[received_msgID].param/100
             elif (pkt[received_msgID].item == 4):
                 max_v = pkt[received_msgID].param/100
+                pref_v = pkt[received_msgID].param/100
             elif (pkt[received_msgID].item == 5):
-                max_yawr = pkt[received_msgID].param/100
+                pref_w = pkt[received_msgID].param/100
         
         elif received_msgID == 139 and data[3] == sysID: # gcs sent out via broadcast, so need to check uav id
             pkt[received_msgID].unpackpkt(data)
@@ -609,40 +608,24 @@ while True:
                                 stop_lat, stop_lon, stop_alt/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
 
         elif Formation_start and len(guide_lat)!=0:
-            self_fly = True # uav use the pre-calculated path (not folowing the leader)
-            if (1 in other_uavs):
-                self_fly = False # if the leader is detected, the uav follows the leader
-                # if (other_uavs[1].mode == 4):
-                #     self_fly = False # if the leader is detected and it is in guided mode, the uav follows the leader
-            if not self_fly:
-                # get desired velocity
-                Lx, Ly, Lz = pm.geodetic2enu(other_uavs[1].lat/1e7, other_uavs[1].lon/1e7, 10, lat.value/1e7, lon.value/1e7, 10)
-                # des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].hdg*math.pi/180)
-                des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].yaw*math.pi/180)
-                a, b, c = pm.enu2geodetic(des_x, des_y, 10, lat.value/1e7, lon.value/1e7, 10)  
-                Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
-                vx_f = max(min(other_uavs[1].vx/100 + k_v * des_y, max_v), -max_v) # v:ned (cm/s -> m/s), des:enu, so need to switch direction
-                vy_f = max(min(other_uavs[1].vy/100 + k_v * des_x, max_v), -max_v)
-                Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(vx_f*100), int(vy_f*100), 0
-                # get desired yaw rate
-                # des_yaw_change = other_uavs[1].hdg - hdg.value
-                des_yaw = (90 - other_uavs[1].yaw)*math.pi/180 # enu2ned, deg2rad
-                Dyn_yaw.value = round(other_uavs[1].yaw)
-                # des_yaw_change = other_uavs[1].yaw - yaw.value
-                # if des_yaw_change > 180:
-                #     des_yaw_change -= 360
-                # elif des_yaw_change <= -180:
-                #     des_yaw_change += 360
-                # des_yawr = other_uavs[1].zgyro + k_yawr * des_yaw_change
-                # des_yawr = max(min(des_yawr, max_yawr), -max_yawr)
-                # Dyn_yawr.value = int(des_yawr)
-                # des_yawr *= math.pi/180 # deg to rad
-                # # send out cmd
-                pos_vel_cmd, yaw_yawr_cmd = 2, 1
-                # print('yaws: ', other_uavs[1].yaw, yaw.value)
-                print('Formation Start vx, vy, yr cmd: ', vx_f, vy_f, des_yaw)
-                master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
-                        0, 0, 0, vx_f, vy_f, 0, 0, 0, 0, des_yaw, 0))
+            des_pos, des_vel, des_yaw, ratio = formation.get_vel_pos(pkt[131].LF, time.time()-formation_start_time)
+            dx, dy, c = pm.enu2geodetic(des_pos[0], des_pos[1], 10, lat.value/1e7, lon.value/1e7, 10)  
+            if pkt[131].LF == 0 or (1 not in other_uavs): # if uav is the leader or leader went missing
+                cmd_vx = des_vel[0] + k_v*dx
+                cmd_vy = des_vel[1] + k_v*dy
+            else: # follower takes leader's velocity into account if there is a leader
+                cmd_vx = other_uavs[1].vx/100*ratio + k_v*dx
+                cmd_vy = other_uavs[1].vy/100*ratio + k_v*dy
+            a, b, c = pm.enu2geodetic(des_pos[0], des_pos[1], 10, orig_lat/1e7, orig_lon/1e7, 10)  
+            Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
+            Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(cmd_vx*100), int(cmd_vy*100), 0
+            Dyn_yaw.value = round(des_yaw*math.pi/180)
+            des_yaw = math.pi/2 - des_yaw # enu2ned
+            print('Formation Start vx, vy, yr cmd: ', cmd_vx, cmd_vy, des_yaw)
+            pos_vel_cmd, yaw_yawr_cmd = 2, 1
+            master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
+                    0, 0, 0, cmd_vx, cmd_vy, 0, 0, 0, 0, des_yaw, 0))
+
         last_mavguide_time = time.time()
            
     # Save data to memory

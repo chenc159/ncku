@@ -348,6 +348,7 @@ while True:
             if (999 not in pkt[received_msgID].Mission_alt): # if all mission waypts are received
                 print('All Points Received!')
                 guide_lat, guide_lon, guide_alt = pkt[received_msgID].Mission_lat, pkt[received_msgID].Mission_lon, pkt[received_msgID].Mission_alt
+                
                 if pkt[131].Formation == 0:
                     wp = mavwp.MAVWPLoader()
                     frame = mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT
@@ -372,7 +373,7 @@ while True:
                             # https://mavlink.io/en/messages/common.html#MAV_MISSION_RESULT
                         msg = master.recv_match(type=['MISSION_ACK'], blocking=True, timeout=0.1)
                         try: 
-                            command.value, result.value= 999, msg.type # 999 is a self-defined numbmer
+                            command.value, result.value = 999, msg.type # 999 is a self-defined numbmer
                             # Dyn_waypt_lat.value, Dyn_waypt_lon.value = pkt[132].Mission_lat[0], pkt[132].Mission_lon[0]
                             print(result.value)
                         except: pass
@@ -400,6 +401,9 @@ while True:
                     #     guide_lat.append(int(a*1e7))
                     #     guide_lon.append(int(b*1e7))
                     print('Finish Formation Initialization! 3 stages time: ', formation.time)
+                    
+                    command.value, result.value= 999, len(guide_lat) # 999 is a self-defined numbmer
+                    msgID_to_send.extend([129]) # send out mission_ack packet
 
                     '''
                     if save_csv:

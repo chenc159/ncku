@@ -468,7 +468,7 @@ class formation_plan():
     def get_vel_pos(self, id, tc):
         if tc >= self.time[-1]: # if time is larger than the end of mission, return last pos and zero vel
             theta = math.atan2((self.wp_y[id][-1] - self.wp_y[id][-2]),(self.wp_x[id][-1] - self.wp_x[id][-2]))
-            return [self.wp_x[id][-1], self.wp_y[id][-1]], [0, 0], theta
+            return [self.wp_x[id][-1], self.wp_y[id][-1]], [0, 0], theta, 1
         for j in range(len(self.time)):
             if tc < self.time[j]:
                 time_no = j - 1
@@ -649,9 +649,9 @@ class formation_plan():
 # t_lin = np.linspace(0, c.time[-1]-0.01, int((c.time[-1]-0.01)/dt))
 # for t in t_lin:
 #     pos, vel, theta, ratio = c.get_vel_pos(0, t)
-#     print(type(pos[0]))
+#     # print(type(pos[0]))
 
-    # print(t, pos, vel, theta, ratio, type(pos[0]))
+#     print(t, pos, vel, theta, ratio, type(pos[0]))
 
 # tt = time.time()
 # print(c.get_vel_pos(0, 29.95))

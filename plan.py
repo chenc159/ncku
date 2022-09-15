@@ -466,7 +466,7 @@ class formation_plan():
         # print(len(x), len(wp_x[0]), len(time), time)
     
     def get_vel_pos(self, id, tc):
-        if tc > self.time[-1]: # if time is larger than the end of mission, return last pos and zero vel
+        if tc >= self.time[-1]: # if time is larger than the end of mission, return last pos and zero vel
             theta = math.atan2((self.wp_y[id][-1] - self.wp_y[id][-2]),(self.wp_x[id][-1] - self.wp_x[id][-2]))
             return [self.wp_x[id][-1], self.wp_y[id][-1]], [0, 0], theta
         for j in range(len(self.time)):
@@ -643,11 +643,18 @@ class formation_plan():
 # plt.legend(['uav1', 'uav2', 'uav3'])
 # plt.show()
 
-c = formation_plan(10, 60, [0, 1, 51, 50], [0, 50, 52, 2], 3, -1.5, 60)
-tt = time.time()
-print(c.get_vel_pos(0, 29.95))
-print(time.time()-tt)
-pos, vel, theta, ratio = c.get_vel_pos(0, 29.95)
-print(pos, vel, theta, ratio)
+# c = formation_plan(10, 60, [0, 1, 51, 50], [0, 50, 52, 2], 3, -1.5, 60)
+# print(c.time)
+# dt = 0.25
+# t_lin = np.linspace(0, c.time[-1]-0.01, int((c.time[-1]-0.01)/dt))
+# for t in t_lin:
+#     pos, vel, theta, ratio = c.get_vel_pos(0, t)
+#     print(t, pos, vel, theta, ratio)
+
+# tt = time.time()
+# print(c.get_vel_pos(0, 29.95))
+# print(time.time()-tt)
+# pos, vel, theta, ratio = c.get_vel_pos(0, 29.95)
+# print(pos, vel, theta, ratio)
 
 

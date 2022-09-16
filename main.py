@@ -625,9 +625,9 @@ while True:
             a, b, c = pm.enu2geodetic(des_pos[0], des_pos[1], 10, orig_lat/1e7, orig_lon/1e7, 10)  
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(cmd_vx*100), int(cmd_vy*100), 0
-            Dyn_yaw.value = round(des_yaw*math.pi/180)
+            Dyn_yaw.value = round(des_yaw*180/math.pi)
             des_yaw = math.pi/2 - des_yaw # enu2ned
-            print('Formation Start vx, vy, yr cmd: ', cmd_vx, cmd_vy, des_yaw)
+            print('Formation Start vx, vy, yaw cmd: ', cmd_vx, cmd_vy, des_yaw)
             pos_vel_cmd, yaw_yawr_cmd = 2, 1
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
                     0, 0, 0, cmd_vx, cmd_vy, 0, 0, 0, 0, des_yaw, 0))

@@ -617,11 +617,11 @@ while True:
             a, b, c = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, 10, orig_lat/1e7, orig_lon/1e7, 10)
             dx, dy = des_pos[0] - a, des_pos[1] - b
             if pkt[131].LF == 0 or (1 not in other_uavs): # if uav is the leader or leader went missing
-                cmd_vx = des_vel[0] + k_v*dx
-                cmd_vy = des_vel[1] + k_v*dy
+                cmd_vx = des_vel[0] + k_v*dy # enu2ned
+                cmd_vy = des_vel[1] + k_v*dx
             else: # follower takes leader's velocity into account if there is a leader
-                cmd_vx = other_uavs[1].vx/100*ratio + k_v*dx
-                cmd_vy = other_uavs[1].vy/100*ratio + k_v*dy
+                cmd_vx = other_uavs[1].vx/100*ratio + k_v*dy # enu2ned
+                cmd_vy = other_uavs[1].vy/100*ratio + k_v*dx
             a, b, c = pm.enu2geodetic(des_pos[0], des_pos[1], 10, orig_lat/1e7, orig_lon/1e7, 10)  
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(cmd_vx*100), int(cmd_vy*100), 0

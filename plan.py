@@ -491,11 +491,14 @@ class formation_plan():
             norm_x = (self.x[i+1] - self.x[i])/((self.x[i+1] - self.x[i])**2 + (self.y[i+1] - self.y[i])**2)**0.5
             norm_y = (self.y[i+1] - self.y[i])/((self.x[i+1] - self.x[i])**2 + (self.y[i+1] - self.y[i])**2)**0.5
         if (time_no - i*3 + 1)%3 == 0: # turning
+            # theta related to pivot
             theta = theta0[id] + (self.w0*math.copysign(1,self.Ltang[i+1]))*(tc-self.time[time_no])
             vx = -dist[id]*(self.w0*math.copysign(1,self.Ltang[i+1]))*math.sin(theta)
             vy = dist[id]*(self.w0*math.copysign(1,self.Ltang[i+1]))*math.cos(theta)
             px = dist[id]*math.cos(theta) + self.wp_x[pivot_id][time_no]
             py = dist[id]*math.sin(theta) + self.wp_y[pivot_id][time_no]
+            # enu yaw angle 
+            theta = math.atan2((self.wp_y[id][time_no] - self.wp_y[id][time_no-1]),(self.wp_x[id][time_no] - self.wp_x[id][time_no-1])) + (self.w0*math.copysign(1,self.Ltang[i+1]))*(tc-self.time[time_no])
             ratio = self.Desired_dist_f2f/self.Desired_dist
         else:
             if (time_no - i*3 + 1)%2 == 0: # decelerating
@@ -507,7 +510,7 @@ class formation_plan():
             px = self.wp_x[id][time_no]+(self.v0*(tc-self.time[time_no])+0.5*acc*(tc-self.time[time_no])**2)*norm_x
             py = self.wp_y[id][time_no]+(self.v0*(tc-self.time[time_no])+0.5*acc*(tc-self.time[time_no])**2)*norm_y
             ratio = 1
-        return [float(round(px, 3)), float(round(py, 3))], [float(round(vx, 3)), float(round(vy, 3))], float(round(theta, 3)), float(round(ratio, 3))
+        return [float(round(px, 3)), float(round(py, 3))], [float(round(vx, 3)), float(round(vy, 3))], float(round(90-theta*180/math.pi, 3)), float(round(ratio, 3))
 
     def dec_speed(self, v0, a):
         t = (0-v0)/a

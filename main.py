@@ -110,7 +110,8 @@ others_gps_time, others_sys_time = c_int(0), c_int(0)
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
     129: packet129(sysID, compID, commID, command, result),
-    130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_yaw, others_gps_time),
+    # 130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_yaw, others_gps_time),
+    130: packet130(sysID),
     131: packet131(),
     132: packet132(),
     133: packet133(),
@@ -293,7 +294,8 @@ while True:
                     # dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, other_uavs[n_id].alt)
                     # pkt[130].calculated(other_uavs[n_id].sysID, other_uavs[n_id].commID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi), other_uavs[n_id].gps_time)
                     pkt_bytearray = bytearray([255])
-                    pkt_bytearray.extend(pkt[130].packpkt()) # pack the pkt info
+                    pkt_bytearray.extend(pkt[130].packpkt(other_uavs[n_id].sysID, other_uavs[n_id].commID, other_uavs[n_id].lat, other_uavs[n_id].lon, other_uavs[n_id].alt,
+                                        other_uavs[n_id].vx, other_uavs[n_id].vy, other_uavs[n_id].vz, other_uavs[n_id].yaw, other_uavs[n_id].gps_time)) # pack the pkt info
                     # store computer system time and gps time
                     pkt_bytearray.extend(pack('i',int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))))
                     # calculae checksum

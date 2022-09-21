@@ -110,7 +110,7 @@ others_gps_time, others_sys_time = c_int(0), c_int(0)
 pkt= {127: packet127(sysID, compID, commID, mode, arm, system_status, failsafe),
     128: packet128(sysID, compID, commID, lat, lon, alt, fix, sat_num, vx, vy, vz, hdg, roll, pitch, yaw, xacc, yacc, zacc, gps_time),
     129: packet129(sysID, compID, commID, command, result),
-    130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_hdg, others_gps_time),
+    130: packet130(sysID, others_sysID, others_commID, others_lat, others_lon, others_alt, others_vx, others_vy, others_vz, others_yaw, others_gps_time),
     131: packet131(),
     132: packet132(),
     133: packet133(),

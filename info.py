@@ -301,6 +301,7 @@ class packet130(object):
         self.others_vy = others_vy
         self.others_vz = others_vz
         self.others_yaw = others_yaw
+        self.others_gps_time = others_gps_time
     
     def calculated(self, others_sysID, others_commID, relative_dist, relative_ang, others_gps_time):
         self.others_sysID = others_sysID

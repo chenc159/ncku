@@ -292,8 +292,8 @@ class packet130(object):
         self.msgID = 130
         self.sysID = sysID
         # c_int
-        # self.others_sysID = others_sysID
-        # self.others_commID = others_commID
+        self.others_sysID = others_sysID
+        self.others_commID = others_commID
         self.others_lat = others_lat
         self.others_lon = others_lon
         self.others_alt = others_alt

@@ -31,7 +31,7 @@ def write_csv(data, folder, no): # data, folder name (result '1', or '2'), no/nu
 # To save data to csv, the first argument shall be 1
 # Second argument shall give the data saving frequency (default 1 Hz)
 save_item_1 = [['time', 'mode', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'roll', 'pitch', 'yaw', 'dlat', 'dlon', 'dalt', 'dvx', 'dvy', 'dyr']]
-save_item_2 = [['time', 'neighboring_id', 'relative_dis', 'relative_ang']]
+save_item_2 = [['time', 'neighboring_id', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'yaw']]
 data_list, data_list_n = save_item_1.copy(), save_item_2.copy()
 data_list_s, data_list_n_s = save_item_1.copy(), save_item_2.copy()
 write_data_per_s = 1*60 
@@ -290,8 +290,8 @@ while True:
                     print('pop: ', n_id)
                     other_uavs.pop(n_id)
                 else:
-                    dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, other_uavs[n_id].alt)
-                    pkt[130].calculated(other_uavs[n_id].sysID, other_uavs[n_id].commID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi), other_uavs[n_id].gps_time)
+                    # dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, other_uavs[n_id].lat/1e7, other_uavs[n_id].lon/1e7, other_uavs[n_id].alt)
+                    # pkt[130].calculated(other_uavs[n_id].sysID, other_uavs[n_id].commID, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi), other_uavs[n_id].gps_time)
                     pkt_bytearray = bytearray([255])
                     pkt_bytearray.extend(pkt[130].packpkt()) # pack the pkt info
                     # store computer system time and gps time
@@ -520,8 +520,8 @@ while True:
             if save_csv and master.sysid_state[master.sysid].armed: 
                 utctime = datetime.utcnow()
                 data_step = [int((utctime.minute*60 + utctime.second)*1e3 + round(utctime.microsecond/1e3))]
-                dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, others_lat.value/1e7, others_lon.value/1e7, others_alt.value)
-                data_step.extend([others_sysID.value, (dx**2 + dy**2)**0.5, int(math.atan2(dy,dx)*180/math.pi)])
+                # dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value, others_lat.value/1e7, others_lon.value/1e7, others_alt.value)
+                data_step.extend([others_sysID.value, others_lat.value, others_lon.value, others_alt.value, others_vx.value, others_vy.value, others_vz.value, others_yaw.value])
                 data_list_n.append(data_step)
                 data_list_n_s.append(data_step)
         
@@ -626,7 +626,7 @@ while True:
                 a, b, c = pm.enu2geodetic(des_x, des_y, 10, orig_lat/1e7, orig_lon/1e7, 10)  
                 des_yaw = other_uavs[1].yaw
 
-            cmd_vx = des_vel[1] + k_v*dy
+            cmd_vx = des_vel[1] + k_v*dy # enu2ned
             cmd_vy = des_vel[0] + k_v*dx
             # cmd_vx = other_uavs[1].vx/100*ratio + k_v*dy # enu2ned
             # cmd_vy = other_uavs[1].vy/100*ratio + k_v*dx

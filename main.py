@@ -595,15 +595,15 @@ while True:
             #                 ca_lat, ca_lon, ca_alt/1e3, 0, 0, 0, 0, 0, 0, 0, 0)) 
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b011111000111), 
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) 
-            print('Collision Avoidance !!! UAVs: ', sysID, n_id)
+            print('Collision Avoidance!!! UAVs: ', sysID, n_id)
         # for guided set global position: https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html
         elif Mission_guided and (len(pkt[132].Mission_alt)!=0) and (999 not in pkt[132].Mission_alt):
             des_lat, des_lon, des_alt = pkt[132].Mission_lat[waypt_id.value], pkt[132].Mission_lon[waypt_id.value], pkt[132].Mission_alt[waypt_id.value]
             if (des_lat != target_lat) or (des_lon != target_lon):
-                print('Guided mission command sending out: ', des_lat, des_lon, des_alt)
                 pos_vel_cmd, yaw_yawr_cmd = 1, 1
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111111000), 
                         des_lat, des_lon, des_alt, 0, 0, 0, 0, 0, 0, 0, 0))
+                print('Guided mission command sending out: ', des_lat, des_lon, des_alt)
             dx, dy, dz = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, alt.value/1e3, des_lat/1e7, des_lon/1e7, des_alt)
             if (waypt_id.value < pkt[131].Waypt_count - 1) and (dx**2 + dy**2 + dz**2 <= 1.0**2):
                 waypt_id.value += 1
@@ -613,6 +613,7 @@ while True:
                 pos_vel_cmd, yaw_yawr_cmd = 1, 1
                 master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b110111111000), 
                                 stop_lat, stop_lon, stop_alt/1e3, 0, 0, 0, 0, 0, 0, 0, 0))
+                print('Formation stop lat, lon, alt: ', stop_lat, stop_lon, stop_alt/1e3)
 
         elif Formation_start and len(guide_lat)!=0:
             des_pos, des_vel, des_yaw, ratio = formation.get_vel_pos(pkt[131].LF, time.time()-formation_start_time)
@@ -626,7 +627,7 @@ while True:
                 des_x, des_y = plan.points_L2F(pkt[131].Formation, pkt[131].LF, pkt[131].Desired_dist, pkt[131].Angle, Lx, Ly, other_uavs[1].yaw*math.pi/180)
                 dx, dy = des_x - cur_x, des_y - cur_y
                 a, b, c = pm.enu2geodetic(des_x, des_y, 10, orig_lat/1e7, orig_lon/1e7, 10)  
-                des_yaw = other_uavs[1].yaw
+                des_yaw = other_uavs[1].yaw * math.pi/180 # deg2rad
 
             cmd_vx = des_vel[1] + k_v*dy # enu2ned
             cmd_vy = des_vel[0] + k_v*dx
@@ -634,11 +635,11 @@ while True:
             # cmd_vy = other_uavs[1].vy/100*ratio + k_v*dx
             Dyn_waypt_lat.value, Dyn_waypt_lon.value = int(a*1e7), int(b*1e7)
             Dyn_vx.value, Dyn_vy.value, Dyn_vz.value = int(cmd_vx*100), int(cmd_vy*100), 0
-            Dyn_yaw.value = round(des_yaw)
-            print('Formation Start vx, vy, yaw cmd: ', cmd_vx, cmd_vy, des_yaw*math.pi/180)
+            Dyn_yaw.value = round(des_yaw * 180/math.pi)
             pos_vel_cmd, yaw_yawr_cmd = 2, 1
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
                     0, 0, 0, cmd_vx, cmd_vy, 0, 0, 0, 0, des_yaw, 0))
+            print('Formation Start vx, vy, yaw cmd: ', cmd_vx, cmd_vy, Dyn_yaw.value)
 
         last_mavguide_time = time.time()
            

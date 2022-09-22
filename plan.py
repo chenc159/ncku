@@ -510,7 +510,7 @@ class formation_plan():
             px = self.wp_x[id][time_no]+(self.v0*(tc-self.time[time_no])+0.5*acc*(tc-self.time[time_no])**2)*norm_x
             py = self.wp_y[id][time_no]+(self.v0*(tc-self.time[time_no])+0.5*acc*(tc-self.time[time_no])**2)*norm_y
             ratio = 1
-        return [float(round(px, 3)), float(round(py, 3))], [float(round(vx, 3)), float(round(vy, 3))], float(round(90-theta*180/math.pi, 3)), float(round(ratio, 3))
+        return [float(round(px, 3)), float(round(py, 3))], [float(round(vx, 3)), float(round(vy, 3))], float(math.pi/2-theta), float(round(ratio, 3))
 
     def dec_speed(self, v0, a):
         t = (0-v0)/a

@@ -638,7 +638,7 @@ while True:
             Dyn_yaw.value = round(des_yaw * 180/math.pi)
             pos_vel_cmd, yaw_yawr_cmd = 2, 1
             master.mav.send(mavutil.mavlink.MAVLink_set_position_target_global_int_message(0, sysID, compID, 6, int(0b100111000111), 
-                    0, 0, 0, cmd_vx, cmd_vy, 0, 0, 0, 0, des_yaw, 0))
+                    0, 0, 0, cmd_vx, cmd_vy, 0, 0, 0, 0, math.pi/2 - des_yaw, 0))
             print('Formation Start vx, vy, yaw cmd: ', cmd_vx, cmd_vy, Dyn_yaw.value)
 
         last_mavguide_time = time.time()

@@ -89,57 +89,54 @@ class particle():
 def ObjectiveFunction():
 
     F1, F2, F3, F4 = 0, 0, 0, 0
+    w1, w2, w3, w4 = 0.1, 1, 0, 0
     for i in range(n):
         xi, yi = uavs[i].ini_pos[0], uavs[i].ini_pos[1]
         xc, yc = uavs[i].cur_pos[0], uavs[i].cur_pos[1]
         xg, yg = uavs[i].des_pos[0], uavs[i].des_pos[1]
         xn, yn = uavs[i].nxt_pos[0], uavs[i].nxt_pos[1]
-        # F1 += ((xc-xn)**2 + (yc-yn)**2) + ((xn-xg)**2 + (yn-yg)**2)
-        # F1 += ((xc-xn)**2 + (yc-yn)**2)**(0.5) + ((xn-xg)**2 + (yn-yg)**2)**(0.5)
-        F1 += ((xn-xg)**2 + (yn-yg)**2)**(0.5)
-        # print(F1)
-        
         xnc, ync, xng, yng, xcg, ycg = xn-xc, yn-yc, xn-xg, yn-yg, xc-xg, yc-yg
-        pnc, png, pcg = (xnc**2+ync**2), (xng**2+yng**2), (xcg**2+ycg**2)
-        # if pnc*png!=0.0:
-        #     if (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
-        #         F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5)))
-        if ((xc-xi)**2+(yc-yi)**2) >= ((xn-xi)**2+(yn-yi)**2): # going backward
-            F4 += 1
-            # print(F4)
-        f3_bool = False
+        F1 += (xng**2 + yng**2)**(0.5)
+
         for j in range(n):
             if i!=j:
                 xn2, yn2 = uavs[j].nxt_pos[0], uavs[j].nxt_pos[1]
-                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2.0*uavs[i].r:
-                    F2 += 1e5
-                else:
-                    F2 += 5.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 1.0*uavs[i].r)
-                if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
-                    f3_bool = True
-        if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
-            F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))) # cos law for smoothness detection
+                d12 = ((xn-xn2)**2 + (yn-yn2)**2)**(0.5)
+                if d12 <= 1.0*uavs[i].r:
+                    F2 += 1
+                elif d12 > 1.0*uavs[i].r and d12 <= 3.0*uavs[i].r:
+                    # if vyn1 >= 0.75 and vyn2 >= 0.775:
+                    #     F2 += 0
+                    # else:
+                    F2 += uavs[i].r/d12
+                # # else: 
+                # #     F2 += 0
+        # if ((xc-xi)**2+(yc-yi)**2) > ((xn-xi)**2+(yn-yi)**2): # going backward
+        #     F3 += 1e3
 
-    return 1.0*F1 + 1.0*F2 + 0.0*F3 + 150.0*F4
 
-# def update__(i,j,w,p,v,bp,gbp):
+        
+        # pnc, png, pcg = (xnc**2+ync**2), (xng**2+yng**2), (xcg**2+ycg**2)
+        # # if pnc*png!=0.0:
+        # #     if (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
+        # #         F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5)))
+        # if ((xc-xi)**2+(yc-yi)**2) >= ((xn-xi)**2+(yn-yi)**2): # going backward
+        #     F4 += 1
+        #     # print(F4)
+        # f3_bool = False
+        # for j in range(n):
+        #     if i!=j:
+        #         xn2, yn2 = uavs[j].nxt_pos[0], uavs[j].nxt_pos[1]
+        #         if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 2.0*uavs[i].r:
+        #             F2 += 1e5
+        #         else:
+        #             F2 += 5.0/abs(((xn-xn2)**2 + (yn-yn2)**2)**(0.5) - 1.0*uavs[i].r)
+        #         if ((xn-xn2)**2 + (yn-yn2)**2)**(0.5) <= 3.0*uavs[i].r:
+        #             f3_bool = True
+        # if f3_bool and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) <= 1 and (pnc+png-pcg)/(2*pnc**0.5*png**0.5) >= -1:
+        #     F3 += math.pi - math.acos((pnc+png-pcg)/(2*(pnc**0.5)*(png**0.5))) # cos law for smoothness detection
 
-#     nCom = 2
-#     for k in range(nCom):
-#         # update velocity
-#         vv = (w*ptcle.velocity[i,j,k] +
-#                             c1*np.random.random()*(ptcle.best_position[i,j,k] - ptcle.position[i,j,k]) +
-#                             c2*np.random.random()*(ptcle.globalbest_pos[j,k] - ptcle.position[i,j,k]))
-#         # apply velocity limits
-#         vv = min(max(vv, VelMin), VelMax)
-#         # update position
-#         pp = ptcle.position[i,j,k] + vv
-#         # velocity mirror effect
-#         if pp < VarMin or pp > VarMax:
-#             vv *= -1
-#         # apply position limits
-#         pp = min(max(pp, VarMin), VarMax)
-#     # uavs[j].update_nxt(ptcle.position[i,j,:])   
+    return w1*F1 + w2*F2 + w3*F3 + w4*F4
 
 
 def pso():

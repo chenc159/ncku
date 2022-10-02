@@ -112,6 +112,7 @@ def pso():
         flight.update_nxt(ptcle.position[i,:])
         ptcle.cost[i] = ObjectiveFunction()
         ptcle.best_cost[i] = ptcle.cost[i]
+        ptcle.best_position[i,:] = ptcle.best_position[i]
 
         if ptcle.best_cost[i] < ptcle.globalbest_cost:
             ptcle.globalbest_cost = ptcle.best_cost[i]

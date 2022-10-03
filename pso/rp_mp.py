@@ -65,21 +65,31 @@ class uav():
         # print(ang)
         self.nxt_acc[0] =  9.81*ang[0]
         self.nxt_acc[1] =  -9.81*ang[1]
+        temp_a, temp_b = self.nxt_acc[0], self.nxt_acc[1]
+        if (self.nxt_acc[0]**2 + self.nxt_acc[1]**2)**0.5 > MaxAcc:
+            self.nxt_acc[0] = MaxAcc*temp_a/(temp_a**2+temp_b**2)**0.5
+            self.nxt_acc[1] = MaxAcc*temp_b/(temp_a**2+temp_b**2)**0.5
         self.nxt_vel[0] = self.cur_vel[0] + self.nxt_acc[0]*dt
         self.nxt_vel[1] = self.cur_vel[1] + self.nxt_acc[1]*dt
+        temp_a, temp_b = self.nxt_vel[0], self.nxt_vel[1]
         if (self.nxt_vel[0]**2 + self.nxt_vel[1]**2)**0.5 > MaxVel:
-            self.nxt_vel[0] = MaxVel*self.nxt_vel[0]/(self.nxt_vel[0]**2+self.nxt_vel[1]**2)**0.5
-            self.nxt_vel[1] = MaxVel*self.nxt_vel[1]/(self.nxt_vel[0]**2+self.nxt_vel[1]**2)**0.5
+            self.nxt_vel[0] = MaxVel*temp_a/(temp_a**2+temp_b**2)**0.5
+            self.nxt_vel[1] = MaxVel*temp_b/(temp_a**2+temp_b**2)**0.5
         self.nxt_pos = self.cur_pos + self.nxt_vel*dt
         
     def update_cur(self, ang, uav_res):
         self.cur_acc[0] = 9.81*ang[0]
         self.cur_acc[1] = -9.81*ang[1]
+        temp_a, temp_b = self.cur_acc[0], self.cur_acc[1]
+        if (self.cur_acc[0]**2+self.cur_acc[1]**2)**0.5 > MaxAcc:
+            self.cur_acc[0] = MaxAcc*temp_a/(temp_a**2+temp_b**2)**0.5
+            self.cur_acc[1] = MaxAcc*temp_b/(temp_a**2+temp_b**2)**0.5
         self.cur_vel[0] = self.cur_vel[0] + self.cur_acc[0]*dt
         self.cur_vel[1] = self.cur_vel[1] + self.cur_acc[1]*dt
+        temp_a, temp_b = self.cur_vel[0], self.cur_vel[1]
         if (self.cur_vel[0]**2+self.cur_vel[1]**2)**0.5 > MaxVel:
-            self.cur_vel[0] = MaxVel*self.cur_vel[0]/(self.cur_vel[0]**2+self.cur_vel[1]**2)**0.5
-            self.cur_vel[1] = MaxVel*self.cur_vel[1]/(self.cur_vel[0]**2+self.cur_vel[1]**2)**0.5
+            self.cur_vel[0] = MaxVel*temp_a/(temp_a**2+temp_b**2)**0.5
+            self.cur_vel[1] = MaxVel*temp_b/(temp_a**2+temp_b**2)**0.5
         self.cur_pos += self.cur_vel*dt
         self.x_list.extend([self.cur_pos[0]])
         self.y_list.extend([self.cur_pos[1]])
@@ -97,6 +107,7 @@ class uav():
         # print('here')
         for i in range(1000):
             print('UAV id: ', self.id, ', Iteration: ', i)
+            time.sleep(0.5)
             for other_id in uav_pos.keys():
                 if self.id != other_id:
                     self.neighbor[other_id] = [uav_pos[other_id][0], uav_pos[other_id][1]]
@@ -111,7 +122,7 @@ class uav():
     
     def ObjectiveFunction(self): #, uav_pos):
         F1, F2, F3, F4 = 0, 0, 0, 0
-        w1, w2, w3, w4 = 0.1, 1, 0, 0
+        w1, w2, w3, w4 = 0.1, 0.9, 0, 0
         xi, yi = self.ini_pos[0], self.ini_pos[1]
         xc, yc = self.cur_pos[0], self.cur_pos[1]
         xg, yg = self.des_pos[0], self.des_pos[1]
@@ -132,6 +143,7 @@ class uav():
     def pso(self):
         w = 1
         self.ptcle.position[0,:] = [self.des_pos[0] - self.cur_pos[0], -(self.des_pos[1] - self.cur_pos[1])]
+        # print(self.id, self.ptcle.position[0,:])
         self.ptcle.best_position[0,:] = [self.des_pos[0] - self.cur_pos[0], -(self.des_pos[1] - self.cur_pos[1])]
         for i in range(nPop):
             self.update_nxt(self.ptcle.position[i,:])
@@ -171,16 +183,13 @@ class uav():
                     if self.ptcle.best_cost[i] < self.ptcle.globalbest_cost:
                         self.ptcle.globalbest_cost = self.ptcle.best_cost[i]
                         self.ptcle.globalbest_pos = self.ptcle.best_position[i,:]
-                        # print('a',self.ptcle.globalbest_cost) #, self.ptcle.best_position[i,:,:])
 
             w *= wdamp
 
 class particle():
     def __init__(self):
-        # # self.position = np.random.uniform(VarMin, VarMax, (nPop, nVar, nCom))
         self.position = [] 
         for i in range(nPop):
-            # self.position.extend([np.random.uniform(VarMin, VarMax, (nVar, nCom))])
             self.position.extend([np.random.uniform(VarMin, VarMax, nCom)])
         self.position = np.asarray(self.position)
         self.velocity = np.zeros((nPop, nCom))
@@ -195,7 +204,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    np.random.seed(3)
+    np.random.seed(4)
     cpu_count = mp.cpu_count()
 
     # initialize
@@ -208,18 +217,22 @@ if __name__ == '__main__':
     # init_y = [0, 0, 30, 30]
     # des_x = [30, 0, 0, 30]
     # des_y = [30, 30, 0, 0]
+    
     n = len(init_x) # number of uav
+    # Define max acc, max vel, initial velocity, safty range, time interval
     MaxAcc = 8.0
     MaxVel = 5.0
+    v0, r, dt = 0.0, 5.0, 1.0
 
     # Problem Definition
     nVar = n                # Number of Decision Variables
     nCom = 2                # Number of Components (roll, pitch)
-    # VarSize = [1 nVar]      # Size of Decision Variables Matrix
-    # VarMax = 1.0*math.pi      # Upper Bound of Variables, 2*math.pi
-    # VarMin = -VarMax              # Lower Bound of Variables, 0
+    # Upper/Lower Bound of Variables
     VarMax = math.pi/6.0      
     VarMin = -VarMax     
+    # Velocity Limits
+    VelMax = 0.5*(VarMax-VarMin)
+    VelMin = -VelMax
 
     # PSO parameters
     MaxIt = 100       # Maximum Number of Iterations
@@ -229,32 +242,24 @@ if __name__ == '__main__':
     c1 = 1.5          # Personal Learning Coefficient
     c2 = 2.0          # Global Learning Coefficient
 
-    # Velocity Limits
-    VelMax = 0.5*(VarMax-VarMin)
-    VelMin = -VelMax
 
-    # 速度 & 安全距離設定 velocity and safty range
-    v0, r, dt = 0.0, 5.0, 1.0
-
-    uavs = {}
+    uavs = {} # initialize UAVs and put them in dictionary
     for i in range(n):
         uavs[i] = uav(i, [init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
 
     mgr = mp.Manager()
     uav_pos, uav_res = mgr.dict(), mgr.dict()
     for i in range(n):
-        # uav_pos[i] = mgr.list([init_x[i], init_y[i]])
+        # for v2v communication
         uav_pos[i] = mgr.dict()
-        uav_pos[i][0] = [init_x[i]]
-        uav_pos[i][1] = [init_y[i]]
-
+        uav_pos[i][0], uav_pos[i][1] = [init_x[i]], [init_y[i]]
+        # for final result plot
         uav_res[i] = mgr.dict()
-        uav_res[i][0] = [init_x[i]]
-        uav_res[i][1] = [init_y[i]]
+        uav_res[i][0], uav_res[i][1] = [init_x[i]], [init_y[i]]
     
     jobs = [ mp.Process(target=(uavs[i].pathplan), args=(uav_pos, uav_res))
              for i in range(n) 
-             ]
+            ]
     
     for j in jobs:
         j.start()

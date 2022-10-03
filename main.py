@@ -616,7 +616,7 @@ while True:
                 print('Formation stop lat, lon, alt: ', stop_lat, stop_lon, stop_alt/1e3)
 
         elif Formation_start and len(guide_lat)!=0:
-            des_pos, des_vel, des_yaw, ratio = formation.get_vel_pos(pkt[131].LF, time.time()-formation_start_time)
+            des_pos, des_vel, des_yaw, ratio = formation.get_vel_pos(pkt[131].LF, time.time()-formation_start_time) # enu, rad
             # print(des_pos, des_vel, des_yaw, ratio, type(des_pos[0]))
             cur_x, cur_y, c = pm.geodetic2enu(lat.value/1e7, lon.value/1e7, 10, orig_lat/1e7, orig_lon/1e7, 10)
             if pkt[131].LF == 0 or (1 not in other_uavs): # if uav is the leader or leader went missing

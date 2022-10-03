@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cm
 import copy
-import multiprocessing
-from multiprocessing import Pool
 
 def plots():
     # Plotting
@@ -47,9 +45,10 @@ class uav():
         self.nxt_acc[1] =  -9.81*ang[1]
         self.nxt_vel[0] = self.cur_vel[0] + self.nxt_acc[0]
         self.nxt_vel[1] = self.cur_vel[1] + self.nxt_acc[1]
+        temp_a, temp_b = self.nxt_vel[0], self.nxt_vel[1]
         if (self.nxt_vel[0]**2 + self.nxt_vel[1]**2)**0.5 > MaxVel:
-            self.nxt_vel[0] = MaxVel*self.nxt_vel[0]/(self.nxt_vel[0]**2+self.nxt_vel[1]**2)**0.5
-            self.nxt_vel[1] = MaxVel*self.nxt_vel[1]/(self.nxt_vel[0]**2+self.nxt_vel[1]**2)**0.5
+            self.nxt_vel[0] = MaxVel*temp_a/(temp_a**2+temp_b**2)**0.5
+            self.nxt_vel[1] = MaxVel*temp_b/(temp_a**2+temp_b**2)**0.5
         self.nxt_pos = self.cur_pos + self.nxt_vel
         
     def update_cur(self, ang):
@@ -57,9 +56,10 @@ class uav():
         self.cur_acc[1] = -9.81*ang[1]
         self.cur_vel[0] = self.cur_vel[0] + self.cur_acc[0]
         self.cur_vel[1] = self.cur_vel[1] + self.cur_acc[1]
+        temp_a, temp_b = self.cur_vel[0], self.cur_vel[1]
         if (self.cur_vel[0]**2+self.cur_vel[1]**2)**0.5 > MaxVel:
-            self.cur_vel[0] = MaxVel*self.cur_vel[0]/(self.cur_vel[0]**2+self.cur_vel[1]**2)**0.5
-            self.cur_vel[1] = MaxVel*self.cur_vel[1]/(self.cur_vel[0]**2+self.cur_vel[1]**2)**0.5
+            self.cur_vel[0] = MaxVel*temp_a/(temp_a**2+temp_b**2)**0.5
+            self.cur_vel[1] = MaxVel*temp_b/(temp_a**2+temp_b**2)**0.5
         self.cur_pos += self.cur_vel
         self.x_list.extend([self.cur_pos[0]])
         self.y_list.extend([self.cur_pos[1]])
@@ -89,7 +89,7 @@ class particle():
 def ObjectiveFunction():
 
     F1, F2, F3, F4 = 0, 0, 0, 0
-    w1, w2, w3, w4 = 0.1, 1, 0, 0
+    w1, w2, w3, w4 = 0.1, 0.9, 0, 0
     for i in range(n):
         xi, yi = uavs[i].ini_pos[0], uavs[i].ini_pos[1]
         xc, yc = uavs[i].cur_pos[0], uavs[i].cur_pos[1]
@@ -161,12 +161,7 @@ def pso():
     # PSO main loop
     for it in range(MaxIt):
         for i in range(nPop):
-            # res_list = []
             for j in range(n):
-            #     res_list.append(pool.apply_async(update__, [i,j,w]))
-
-            # for res in res_list:
-            #     res.get()
                 for k in range(nCom):
                     # update velocity
                     ptcle.velocity[i,j,k] = (w*ptcle.velocity[i,j,k] +
@@ -200,20 +195,24 @@ def pso():
 
 if __name__ == '__main__':
 
+    start_time = time.time()
     # random.seed(3)
     np.random.seed(3)
-    pool = Pool(multiprocessing.cpu_count())
 
     # initialize
     rng = 30.0
-    init_x = [0.0, 0.0]
-    init_y = [-rng, rng]
-    des_x = [0.0, 0.0]
-    des_y = [rng, -rng]
-    # init_x = [0, 30, 30, 0]
-    # init_y = [0, 0, 30, 30]
-    # des_x = [30, 0, 0, 30]
-    # des_y = [30, 30, 0, 0]
+    # init_x = [0.0, 0.0]
+    # init_y = [-rng, rng]
+    # des_x = [0.0, 0.0]
+    # des_y = [rng, -rng]
+    # init_x = [0.0, rng]
+    # init_y = [0, rng]
+    # des_x = [rng, 0.0]
+    # des_y = [rng, 0.0]
+    init_x = [0, 30, 30, 0]
+    init_y = [0, 0, 30, 30]
+    des_x = [30, 0, 0, 30]
+    des_y = [30, 30, 0, 0]
     n = len(init_x) # number of uav
     MaxAcc = 8.0
     MaxVel = 5.0
@@ -226,6 +225,9 @@ if __name__ == '__main__':
     # VarMin = -VarMax              # Lower Bound of Variables, 0
     VarMax = math.pi/6.0      
     VarMin = -VarMax     
+    # Velocity Limits
+    VelMax = 0.5*(VarMax-VarMin)
+    VelMin = -VelMax
 
     # PSO parameters
     MaxIt = 100       # Maximum Number of Iterations
@@ -235,20 +237,14 @@ if __name__ == '__main__':
     c1 = 1.5          # Personal Learning Coefficient
     c2 = 2.0          # Global Learning Coefficient
 
-    # Velocity Limits
-    VelMax = 0.5*(VarMax-VarMin)
-    VelMin = -VelMax
-
-    # 速度 & 安全距離設定 velocity and safty range
+    # Define initial velocity and safty range
     v0, r = 0.0, 5.0
 
-    uavs = {}
+    uavs = {} # initialize UAVs and put them in dictionary
     for i in range(n):
-        # v0 = [des_x[i]-init_x[i], des_y[i]-init_x[i]]
-        # v0 = [0,0]
         uavs[i] = uav([init_x[i], init_y[i]], [des_x[i], des_y[i]], 0.0, v0, r)
 
-    start_time = time.time()
+    # start main loop
     for i in range(1000):
         try: 
             print('Iteration: ', i)
@@ -260,7 +256,8 @@ if __name__ == '__main__':
             if finished():
                 print('Done!')
                 break
-        except KeyboardInterrupt:
+        
+        except KeyboardInterrupt: # If keyinterrupt, plot the current results
             plots()
             print('KeyboardInterrupt')
             num = input('1 to continue, others to stop')
